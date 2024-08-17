@@ -70,6 +70,9 @@ const createStore = (): Store => {
       throw new Error('Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!');
     }
     // Since peek does not observe value change, use default getter.
+    // Is this correct? When depepdency atom will update, it will not notify it's deriver about change.
+    // Since deriver is marked as fresh after read, when it will be read again, then possibly outdated value from store will be returned.
+    // Maybe it's enough to mark atom as not fresh (even if its mounted), but do not force to read it?
     const value = atom.read({ get, peek })
 
     atomState.value = value;
@@ -78,11 +81,10 @@ const createStore = (): Store => {
     return value;
   };
   const set: StoreValueSetter = (atom, value) => {
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     const result = atom.write({ peek, set }, value);
     // If MutableAtom has been updated - make sure to update it's derivers.
     if (isMutableAtom(atom)) {
-      const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-
       Promise.resolve(atomState).then(recalculateAtomDerivers);
     }
 
@@ -104,7 +106,22 @@ const createStore = (): Store => {
       return () => storeApi.resetAtomValue(observerAtom);
     },
     resetAtomValue(atom) {
+      const atomState = atomToStateMap.get(atom);
+
+      if (!atomState) {
+        return;
+      }
+      
       atomToStateMap.delete(atom);
+      // Is this correct? Clear all references to atom which is getting reset?
+      atomState.dependencies?.forEach((dependencyAtom) => 
+        getAtomStateFromStateMap(dependencyAtom).derivers.delete(atom)
+      );
+      atomState.derivers?.forEach((deriverAtom) => 
+        getAtomStateFromStateMap(deriverAtom).dependencies.delete(atom)
+      );
+      // Should derivers recalculate if they are mounted??? It makes sense to do so.
+      
     }
   };
 
