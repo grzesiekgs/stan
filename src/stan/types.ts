@@ -1,35 +1,57 @@
-import type { AtomInitializedSymbolType } from "./symbols";
+import type { AtomValueNotYetCalculatedSymbolType } from "./symbols";
 
 // STORE
 
 export type StoreValueGetter = <Value>(atom: ReadableAtom<Value>) => Value;
-export type StoreValueSetter = <Value>(
-  atom: WritableAtom<unknown, Value>,
-  value: Value
-) => Value;
-export type StoreValueListener<Value> = (value: Value) => void;
-export type StoreValueSubscriber = <Value>(
+export type StoreValueSetter = <Update, UpdateResult>(
+  atom: WritableAtom<Update, UpdateResult>,
+  value: Update
+) => UpdateResult;
+export type AtomValueObserver<Value> = (value: Value) => void;
+export type StoreValueObserver = <Value>(
   atom: ReadableAtom<Value>,
-  listener: StoreValueListener<Value>
+  observer: AtomValueObserver<Value>
 ) => VoidFunction;
+export type StoreValueResetter = <Value>(
+  atom: ReadableAtom<Value>
+) => void;
+export type BaseAtomState = {
+  isObserved: boolean;
+  isFresh: boolean;
+  // Is there a scenario where this Set would incorrectly prevent garbage collection?
+  // If such case will be determined, then consider wrapping each DerivedAtom in WeakRef, which can be deref'ed.
+  derivers?: Set<DerivedAtom<unknown>>;
+}
+export type InitialDerivedAtomState = BaseAtomState & {
+  value: AtomValueNotYetCalculatedSymbolType;
+  isFresh: false;
+}
 
-export type AtomState<Value> = {
+export type DerivedAtomState<Value> = BaseAtomState & {
   value: Value;
-  deps?: Set<ReadableAtom<unknown>>;
-};
+}
+
+export type MutableAtomState<Value> = BaseAtomState & {
+  value: Value;
+  isFresh: true;
+}
+
+export type AtomState<Value> = InitialDerivedAtomState | DerivedAtomState<Value> | MutableAtomState<Value>;
 
 export type StoreActions = {
   get: StoreValueGetter;
   peek: StoreValueGetter;
   set: StoreValueSetter;
+  reset: 
 };
 
 export type AtomToStateMap = WeakMap<ReadableAtom<any>, AtomState<any>>;
 
 export type Store = {
   peekAtomValue: StoreValueGetter;
-  subscribeToAtomValue: StoreValueSubscriber;
+  observeAtomValue: StoreValueObserver;
   setAtomValue: StoreValueSetter;
+  resetAtomValue: StoreValueResetter;
 };
 
 // ATOM
@@ -43,49 +65,34 @@ export type AtomValueSetter<UpdateValue, UpdateResult = void> = (
   setterArgs: AtomValueSetterArgs,
   updateValue: UpdateValue
 ) => UpdateResult;
-
-export type AtomValueSubscriberArgs<Value> = {
+export type AtomOnObserve<Value> = (args: {
   setSelf: AtomSelfSetter<Value>;
   peek: StoreValueGetter;
-};
-export type AtomValueSubscriber<Value> = (
-  subscriberArgs: AtomValueSubscriberArgs<Value>
-) => void | VoidFunction;
+}) => void | VoidFunction;
 
 export type WritableAtom<Update, UpdateResult> = {
   write: AtomValueSetter<Update, UpdateResult>;
 };
 
-export type ReadableAtom<Value> = {
-  onSubscribe?: AtomValueSubscriber<Value>;
-} & (
-  | {
-      read?: never;
-      initialValue: Value;
-    }
-  | {
-      read: AtomValueGetter<Value>;
-      initialValue?: never;
-    }
-);
+export type DerivedAtom<Value> = {
+  onObserve?: AtomOnObserve<Value>;
+  read: AtomValueGetter<Value>;
+}
 
 export type MutableAtom<Value, UpdateValue = Value> = WritableAtom<
   UpdateValue,
   Value
 > & {
   initialValue: Value;
-  onSubscribe?: AtomValueSubscriber<Value>;
-};
-
-export type DerivedAtom<Value> = {
-  read: AtomValueGetter<Value>;
-  onSubscribe?: AtomValueSubscriber<Value>;
+  onObserve?: AtomOnObserve<Value>;
 };
 
 export type CallbackAtom<Update, UpdateResult = void> = WritableAtom<
   Update,
   UpdateResult
 >;
+export type ReadableAtom<Value> = MutableAtom<Value, any> | DerivedAtom<Value>;
+
 
 export type Atom<
   Value,
@@ -113,7 +120,7 @@ const testMutable2: Atom<number, string, number> = {
 
 const testDerived: Atom<number, never> = {
   read: () => 0,
-  onSubscribe: () => {},
+  onObserve: () => { },
 };
 
 const testCallback: Atom<never, string, number> = {
