@@ -1,44 +1,39 @@
-import { AtomState, AtomToStateMap, DerivedAtom, MutableAtom, ReadableAtom } from "../types";
+import { isMutableAtom } from "../atom/utils";
+import { AtomValueNotYetCalculatedSymbol } from "../symbols";
+import { AtomState, AtomToStateMap, DerivedAtom, ReadableAtom, StoreValueGetter } from "../types";
 
-
-export const initializeMutableAtomState = <Value>(atom: MutableAtom<Value, unknown>): AtomState<Value> => ({
-  deps: undefined,
-  value: atom.initialValue
-})
-
-export const calculateDerivedAtomState = <Value>(atom: DerivedAtom<Value>): AtomState<Value> => {
-
-}
-
-export const calculateAtomState = <Value>(atom: ReadableAtom<Value>, atomToStateMap: AtomToStateMap): AtomState<Value> => {
-    if (atom.read) {
-
-    }
-
-    
-}
-
-const createAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => {
-  const value = atom.initialValue === undefined ?   
-  return {
-  deps: new Set(),
-  value,
-}
-};
-
-
+const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => ({
+  // @ts-expect-error Not sure why tho. Check this later.
+  value: isMutableAtom(atom) ? atom.initialValue : AtomValueNotYetCalculatedSymbol,
+  derivers: undefined,
+  isFresh: true,
+  isObserved: false,
+});
   
 export const getAtomStateFromStateMap = <Value>(
   atom: ReadableAtom<Value>,
   atomToStateMap: AtomToStateMap
 ): AtomState<Value> => {
-  let atomState = atomToStateMap.get(atom);
+  const atomState = atomToStateMap.get(atom);
 
-  if (!atomState) {
-    atomState = createAtomState();
+  if (atomState) {
+    return atomState;
+  }
+  
+  const newAtomState = createNewAtomState(atom);
+  atomToStateMap.set(atom, newAtomState);
+  
+  return newAtomState
+};
+// TODO Better name required.
+export const createProxiedGetter = (defaultGet: StoreValueGetter, atomToStateMap: AtomToStateMap, callerAtom: DerivedAtom<unknown>): StoreValueGetter => (atom) => {
+  const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
 
-    atomToStateMap.get(atom);
+  if (!atomState.derivers) {
+    atomState.derivers = new Set();
   }
 
-  return atomState;
-};
+  atomState.derivers.add(callerAtom);
+  
+  return defaultGet(atom);
+}
