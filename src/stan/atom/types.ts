@@ -1,18 +1,20 @@
 import {
   AtomValueGetter,
   AtomValueSetter,
-  AtomValueSubscriber,
+  AtomOnObserve,
 } from "../types";
 
-export type CreateComputedAtomArgs<Value> = {
+export type CreateDerivedAtomArgs<Value> = {
   getter: AtomValueGetter<Value>;
-  onSubscribe?: AtomValueSubscriber<Value>;
+  onObserve?: AtomOnObserve<Value>;
+  initialValue?: never;
 };
 
 export type CreateMutableAtomArgs<Value, UpdateValue> = {
   initialValue: Value;
-  onSubscribe?: AtomValueSubscriber<Value>;
+  onObserve?: AtomOnObserve<Value>;
   setter?: AtomValueSetter<UpdateValue, Value>;
+  getter?: never;
 };
 
 export type CreateCallbackAtomArgs<UpdateValue, UpdateResult> = {
@@ -20,6 +22,6 @@ export type CreateCallbackAtomArgs<UpdateValue, UpdateResult> = {
 };
 
 export type CreateAtomArgs<Value, UpdateValue, UpdateResult> =
-  | CreateComputedAtomArgs<Value>
+  | CreateDerivedAtomArgs<Value>
   | CreateMutableAtomArgs<Value, UpdateValue>
   | CreateCallbackAtomArgs<UpdateValue, UpdateResult>;
