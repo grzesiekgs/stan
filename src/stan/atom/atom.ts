@@ -4,24 +4,28 @@ import {
   DerivedAtom,
   CallbackAtom,
   StoreActions,
+  AtomValueGetterArgs,
+  AtomValueSetterArgs,
 } from "../types";
 import {
   CreateAtomArgs,
   CreateCallbackAtomArgs,
-  CreateComputedAtomArgs,
+  CreateDerivedAtomArgs,
   CreateMutableAtomArgs,
 } from "./types";
 import {
   isCreateCallbackAtomArgs,
-  isCreateComputedAtomArgs,
+  isCreateDerivedAtomArgs,
   isCreateMutableAtomArgs,
 } from "./utils";
+
+const defaultMutableAtomSetter = <Value>(_: AtomValueSetterArgs, value: Value) => value;
 
 export function createAtom<Value, UpdateValue = Value>(
   args: CreateMutableAtomArgs<Value, UpdateValue>
 ): MutableAtom<Value, UpdateValue>;
 export function createAtom<Value>(
-  args: CreateComputedAtomArgs<Value>
+  args: CreateDerivedAtomArgs<Value>
 ): DerivedAtom<Value>;
 export function createAtom<UpdateValue, UpdateResult>(
   args: CreateCallbackAtomArgs<UpdateValue, UpdateResult>
@@ -38,21 +42,21 @@ export function createAtom<ValueOrUpdateValue, UpdateValueOrUpdateResult>(
     type UpdateValue = UpdateValueOrUpdateResult;
 
     const write: AtomValueSetter<UpdateValue, Value> =
-      args.setter ?? ((storeActions, value) => value as unknown as Value);
+      args.setter ?? defaultMutableAtomSetter as AtomValueSetter<UpdateValue, Value>
 
     return {
       write,
       initialValue: args.initialValue,
-      onSubscribe: args.onSubscribe,
+      onObserve: args.onObserve,
     } satisfies MutableAtom<Value, UpdateValue>;
   }
 
-  if (isCreateComputedAtomArgs(args)) {
+  if (isCreateDerivedAtomArgs(args)) {
     type Value = ValueOrUpdateValue;
 
     return {
       read: args.getter,
-      onSubscribe: args.onSubscribe,
+      onObserve: args.onObserve,
     } satisfies DerivedAtom<Value>;
   }
 
@@ -72,7 +76,7 @@ export function createAtom<ValueOrUpdateValue, UpdateValueOrUpdateResult>(
 
 const t1 = createAtom<number, string>({
   initialValue: 0,
-  onSubscribe: (set) => {},
+  onObserve: (set) => {},
 });
 
 const t2 = createAtom<string, number>({
@@ -86,6 +90,7 @@ const t3 = createAtom({
     return 2;
   },
 });
+
 
 const storeActions = {
   peek: () => {},
