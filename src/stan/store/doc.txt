@@ -1,0 +1,56 @@
+ODCZYTANIE ATOMU:
+
+1. Czy jest w store?
+
+(czy wartość jest świeza? TBD)
+
+TAK
+zwróć wartość
+
+2. Czy ma pole imitialValue?
+
+TAK
+ustaw initialValue jako wartość w store, i zwróć
+
+3. Jezeli nie ma initialValue, to ma read, więc wywołaj read
+
+- przekaz getter który będzie mógł zebrać listę przeczytanych atomów
+
+- czytaj atom (idz do 1?) Czy wartość jest świeza? 
+
+TAK
+zwróć wartość czytanego atomu
+
+NIE
+wywołaj read dla czytanego atomu (idź do 2/3?)
+
+- po wywołaniu read, dla kazdego z przeczytanych atomow, dodaj referencje "nadrzednego" atomu
+
+4. aktualizacja atomu
+
+- ustaw wartość w store
+
+- sprawdź czy nie ma jakiś zasubsrybowanych atomów
+
+NIE
+
+nara
+
+TAK
+
+- iteruj zasubsrybowane atomy
+
+- czy zasubsrybowany atom jest obserwowany?
+
+TAK
+oznacz atom do aktualizacji
+
+NIE
+oznacz wartość zasubsrybowanego atomu jako nieświezą
+
+- wyczyść listę zasubskrybowanych atomów
+
+- dla kazdego atomu oznaczonego do aktualizacji, wywołaj 4
+
+
+
