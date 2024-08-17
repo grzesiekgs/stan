@@ -1,3 +1,3 @@
-export const AtomInitializedSymbol = Symbol("atomInitialized");
+export const AtomValueNotYetCalculatedSymbol = Symbol('atomValueNotYetCalculcated');
 
-export type AtomInitializedSymbolType = typeof AtomInitializedSymbol;
+export type AtomValueNotYetCalculatedSymbolType = typeof AtomValueNotYetCalculatedSymbol;
