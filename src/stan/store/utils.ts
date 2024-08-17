@@ -5,6 +5,7 @@ import { AtomState, AtomToStateMap, DerivedAtom, ReadableAtom, StoreValueGetter 
 const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => ({
   // @ts-expect-error Not sure why tho. Check this later.
   value: isMutableAtom(atom) ? atom.initialValue : AtomValueNotYetCalculatedSymbol,
+  dependencies: undefined,
   derivers: undefined,
   isFresh: true,
   isObserved: false,
@@ -26,14 +27,19 @@ export const getAtomStateFromStateMap = <Value>(
   return newAtomState
 };
 // TODO Better name required.
-export const createProxiedGetter = (defaultGet: StoreValueGetter, atomToStateMap: AtomToStateMap, callerAtom: DerivedAtom<unknown>): StoreValueGetter => (atom) => {
-  const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+export const createProxiedGetter = (defaultGet: StoreValueGetter, atomToStateMap: AtomToStateMap, deriverAtom: DerivedAtom<unknown>): StoreValueGetter => (dependencyAtom) => {
+  const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
+  const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
 
-  if (!atomState.derivers) {
+  if (!dependencyAtomState.derivers) {
     atomState.derivers = new Set();
   }
+  dependencyAtomState.dependencys.add(deriverAtom);
 
-  atomState.derivers.add(callerAtom);
-  
-  return defaultGet(atom);
+  if (!deriverAtomState.dependencies) {
+    deriverAtomState.dependencies = new Set();;
+  }
+  deriverAtomState.dependencies.add(dependencyAtom);
+
+  return defaultGet(dependencyAtom);
 }
