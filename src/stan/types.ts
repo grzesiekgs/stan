@@ -20,6 +20,7 @@ export type BaseAtomState = {
   isFresh: boolean;
   // Is there a scenario where this Set would incorrectly prevent garbage collection?
   // If such case will be determined, then consider wrapping each DerivedAtom in WeakRef, which can be deref'ed.
+  depencencies?: Set<ReadableAtom<unknown>>;
   derivers?: Set<DerivedAtom<unknown>>;
 }
 export type InitialDerivedAtomState = BaseAtomState & {
