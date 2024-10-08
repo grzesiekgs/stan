@@ -1,161 +1,195 @@
-import { createAtom } from "../atom/atom";
-import { isMutableAtom } from "../atom/utils";
+import { createAtom } from '../atom/atom';
+import { isMutableAtom } from '../atom/utils';
 import {
   AtomState,
   AtomToStateMap,
-  ReadableAtom,
+  DerivedAtom,
+  ReadAtomArgs,
+  StatefulAtom,
   Store,
   StoreValueGetter,
   StoreValueSetter,
-} from "../types";
-import { createProxiedGetter, getAtomStateFromStateMap } from "./utils";
+} from '../types';
+import {
+  addAtomDependency,
+  createNewAtomState,
+  createProxiedGet,
+  getAtomStateFromStateMap,
+} from './utils';
 
-const createStore = (): Store => {
+export const createStore = (): Store => {
   const atomToStateMap: AtomToStateMap = new WeakMap();
-  const recalculateAtomDerivers = (atomState: AtomState<unknown>) => {
-    if (!atomState.derivers) {
+  (window as any).showState = () => console.log(atomToStateMap);
+  const recalculateAtomDerivers = (atom: StatefulAtom<any>) => {
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+    const derivers = atomState.derivers;
+    console.log('>>> UPDATE', atom.label);
+    if (!derivers?.size) {
+      console.log('>>> SKIP UPDATE', atom.label);
       return;
     }
 
-    atomState.derivers.forEach((deriverAtom) => {
+    derivers.forEach((deriverAtom) => {
       const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
-      // When deriver is not observed, simply mark it as not fresh
-      if (!deriverAtomState.isObserved) {
-        deriverAtomState.isFresh = false;
-
+      // Don't update deriver atom if it's not observed by anything. It will recaluclate when observation will start.
+      if (!deriverAtomState.isObserved || deriverAtomState.isFresh) {
+        console.log(
+          '>>> SKIP DERIVER',
+          atom.label,
+          deriverAtom.label,
+          deriverAtomState.isFresh,
+          deriverAtomState.value
+        );
         return;
       }
+      derivers.delete(deriverAtom);
+      console.log('>>> UPDATE DERIVER', atom.label, deriverAtom.label);
       // Create getter which will mark current atom as deriver of it's dependencies.
-      const value = deriverAtom.read({ get: createProxiedGetter(get, atomToStateMap, deriverAtom), peek });
+      const value = get(deriverAtom);
 
       return updateAtomValue(deriverAtom, value);
-    })
+    });
+    console.log('>>> DONE UPDATE', atom.label);
     // Clear derivers list after all derivers update.
-    atomState.derivers = undefined;
   };
-  const updateAtomValue = <Value>(atom: ReadableAtom<Value>, value: Value): Value => {
+
+  const updateAtomValue = <Value>(atom: StatefulAtom<Value>, value: Value): Value => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+    console.log('++ MARK ATOM AS FRESH', atom.label, value);
+    atomState.isFresh = true;
+
+    if (atomState.value === value) {
+      return value;
+    }
 
     atomState.value = value;
-    atomState.isFresh = true;
-    
-    Promise.resolve(atomState).then(recalculateAtomDerivers);
-    
+    // Mark each deriver as not fresh.
+    atomState.derivers?.forEach((deriverAtom) => {
+      const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
+      console.log('-- MARK DERIVER AS NOT FRESH', atom.label, deriverAtom.label);
+      deriverAtomState.isFresh = false;
+    });
+
+    console.log('UPDATED ATOM', atom.label, atomState.value, atomState);
+    // If StatefulAtom has been updated - make sure to update all it's observed derivers.
+    // TODO Most likely I want to create queue out there, instea
+    Promise.resolve(atom).then(recalculateAtomDerivers);
+
     return value;
-  }
-  
+  };
+
   const get: StoreValueGetter = (atom) => {
+    console.log('GET', atom.label);
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    // When state is marked as fresh, theres no question asked, just return value.
+
+    atomState.isObserved = true;
+    // When state is marked as fresh, theres was no update since last read, therefore return value.
     if (atomState.isFresh) {
+      console.log('GET_FRESH', atom.label, atomState.value);
       return atomState.value;
     }
     // Safety check to satisfy TS, mutable atom is always frash.
     if (isMutableAtom(atom)) {
-      throw new Error('Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!');
+      throw new Error(
+        'Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!'
+      );
     }
+
     // Create getter which will mark current atom as deriver of it's dependencies.
-    const value = atom.read({ get: createProxiedGetter(get, atomToStateMap, atom), peek });
+    const value = atom.read({ get: createProxiedGet(atom, atomToStateMap, get), peek }, atomState);
+    console.log('GET_READ', atom.label, value);
 
     return updateAtomValue(atom, value);
   };
   const peek: StoreValueGetter = (atom) => {
+    console.log('PEEK', atom.label);
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // When state is marked as fresh, theres no question asked, just return value.
     if (atomState.isFresh) {
+      console.log('PEEK_FRESH', atom.label, atomState.value);
       return atomState.value;
     }
 
     if (isMutableAtom(atom)) {
-      throw new Error('Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!');
+      throw new Error(
+        'Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!'
+      );
     }
-    // Since peek does not observe value change, use default getter.
-    // Is this correct? When depepdency atom will update, it will not notify it's deriver about change.
-    // Since deriver is marked as fresh after read, when it will be read again, then possibly outdated value from store will be returned.
-    // Maybe it's enough to mark atom as not fresh (even if its mounted), but do not force to read it?
-    const value = atom.read({ get, peek })
 
-    atomState.value = value;
-    atomState.isFresh = true;
-    
+    // TODO Explain how `peek` is different from `get`.
+    const value = atom.read({ get, peek }, atomState);
+    console.log('PEEK_READ', atom.label, value);
+
+    return updateAtomValue(atom, value);
+  };
+  const set: StoreValueSetter = (atom, update) => {
+    const value = atom.write({ peek, set }, update);
+
+    if (isMutableAtom(atom)) {
+      updateAtomValue(atom, value);
+    }
+
     return value;
   };
-  const set: StoreValueSetter = (atom, value) => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    const result = atom.write({ peek, set }, value);
-    // If MutableAtom has been updated - make sure to update it's derivers.
-    if (isMutableAtom(atom)) {
-      Promise.resolve(atomState).then(recalculateAtomDerivers);
-    }
-
-    return result;
-  }
 
   const storeApi: Store = {
-    peekAtomValue: peek,
-    setAtomValue: set,
-    observeAtomValue(atom, listener) {
+    peekAtom: get,
+    setAtom: set,
+    observeAtom(atom, listener) {
       const observerAtom = createAtom({
-        getter: ({ get }) => listener(get(atom))
+        label: `observerOf${atom.label}`,
+        getter: ({ get }) => {
+          console.log('OBSERVER GET', atom.label);
+          listener(get(atom));
+        },
       });
-
       get(observerAtom);
       // Pretend that observerAtom is observed by some entity, so it will recalculate on deps change.
-      getAtomStateFromStateMap(observerAtom, atomToStateMap).isObserved = true;
+      // getAtomStateFromStateMap(observerAtom, atomToStateMap).isObserved = true;
 
-      return () => storeApi.resetAtomValue(observerAtom);
+      return () => {
+        // TODO How to unobserve??? When to reset it?? Maybe reset isObserved and derivers on deriversUpdate???
+        getAtomStateFromStateMap(observerAtom, atomToStateMap).isObserved = false;
+        storeApi.resetAtom(observerAtom);
+      };
     },
-    resetAtomValue(atom) {
-      const atomState = atomToStateMap.get(atom);
-
-      if (!atomState) {
-        return;
-      }
-      
-      atomToStateMap.delete(atom);
-      // Is this correct? Clear all references to atom which is getting reset?
-      atomState.dependencies?.forEach((dependencyAtom) => 
-        getAtomStateFromStateMap(dependencyAtom).derivers.delete(atom)
-      );
-      atomState.derivers?.forEach((deriverAtom) => 
-        getAtomStateFromStateMap(deriverAtom).dependencies.delete(atom)
-      );
-      // Should derivers recalculate if they are mounted??? It makes sense to do so.
-      
-    }
+    resetAtom(atom) {
+      // TODO Consider checking is atom actually mounted.
+    },
   };
 
   return storeApi;
 };
 
-const testStore = createStore();
+/* 
 // Mutable
 const testMutableAtom1 = createAtom({
   initialValue: 5,
-})
-const setMutableAtomRes1 = testStore.setAtomValue(testMutableAtom1, 10);
-const peekMutableAtomRes1 = testStore.peekAtomValue(testMutableAtom1);
+});
+const setMutableAtomRes1 = testStore.setAtom(testMutableAtom1, 10);
+const peekMutableAtomRes1 = testStore.peekAtom(testMutableAtom1);
 
 // Mutable mapped
 const testMutableAtom2 = createAtom({
   initialValue: 5,
-  setter: (_, update: string) => Number(update)
-})
-const setMutableAtomRes2 = testStore.setAtomValue(testMutableAtom2, '10')
-const peekMutableAtomRes2 = testStore.peekAtomValue(testMutableAtom2)
+  setter: (_, update: string) => Number(update),
+});
+const setMutableAtomRes2 = testStore.setAtom(testMutableAtom2, '10');
+const peekMutableAtomRes2 = testStore.peekAtom(testMutableAtom2);
 // Derived
 const testDerivedAtom = createAtom({
-  getter: ({ get}) => String(get(testMutableAtom1))
-})
+  getter: ({ get }) => String(get(testMutableAtom1)),
+});
 
-const setDeriverAtomRes = testStore.setAtomValue(testDerivedAtom, 10)
-const peekDeriverAtomRes = testStore.peekAtomValue(testDerivedAtom)
+const setDeriverAtomRes = testStore.setAtom(testDerivedAtom, 10);
+const peekDeriverAtomRes = testStore.peekAtom(testDerivedAtom);
 
 // Callback
 const testCallbackAtom = createAtom({
   setter: ({ set }, update: string) => {
     return set(testMutableAtom1, Number(update));
-  }
-})
-const setCallbackAtomRes = testStore.setAtomValue(testCallbackAtom, '2')
-const peekCallbackAtomRes = testStore.peekAtomValue(testCallbackAtom)
+  },
+});
+const setCallbackAtomRes = testStore.setAtom(testCallbackAtom, '2');
+const peekCallbackAtomRes = testStore.peekAtom(testCallbackAtom);
+*/

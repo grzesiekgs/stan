@@ -1,32 +1,36 @@
 import {
-  AtomValueSetter,
   MutableAtom,
   DerivedAtom,
   CallbackAtom,
   StoreActions,
-  AtomValueGetterArgs,
-  AtomValueSetterArgs,
-} from "../types";
+  WriteAtom,
+  ReadAtom,
+} from '../types';
 import {
   CreateAtomArgs,
   CreateCallbackAtomArgs,
   CreateDerivedAtomArgs,
   CreateMutableAtomArgs,
-} from "./types";
+} from './types';
 import {
   isCreateCallbackAtomArgs,
   isCreateDerivedAtomArgs,
   isCreateMutableAtomArgs,
-} from "./utils";
+} from './utils';
 
-const defaultMutableAtomSetter = <Value>(_: AtomValueSetterArgs, value: Value) => value;
+const defaultWrite: WriteAtom<any, any> = (args, value) => value;
+const defaultRead: ReadAtom<any> = (args, atomState) => {
+  if (!atomState.isInitialized) {
+    throw Error('Default reader applied to derived atom!');
+  }
+
+  return atomState.value;
+};
 
 export function createAtom<Value, UpdateValue = Value>(
   args: CreateMutableAtomArgs<Value, UpdateValue>
 ): MutableAtom<Value, UpdateValue>;
-export function createAtom<Value>(
-  args: CreateDerivedAtomArgs<Value>
-): DerivedAtom<Value>;
+export function createAtom<Value>(args: CreateDerivedAtomArgs<Value>): DerivedAtom<Value>;
 export function createAtom<UpdateValue, UpdateResult>(
   args: CreateCallbackAtomArgs<UpdateValue, UpdateResult>
 ): CallbackAtom<UpdateValue, UpdateResult>;
@@ -37,41 +41,46 @@ export function createAtom<ValueOrUpdateValue, UpdateValueOrUpdateResult>(
     UpdateValueOrUpdateResult
   >
 ) {
-  if (isCreateMutableAtomArgs(args)) {
-    type Value = ValueOrUpdateValue;
-    type UpdateValue = UpdateValueOrUpdateResult;
-
-    const write: AtomValueSetter<UpdateValue, Value> =
-      args.setter ?? defaultMutableAtomSetter as AtomValueSetter<UpdateValue, Value>
-
-    return {
-      write,
-      initialValue: args.initialValue,
-      onObserve: args.onObserve,
-    } satisfies MutableAtom<Value, UpdateValue>;
-  }
-
-  if (isCreateDerivedAtomArgs(args)) {
-    type Value = ValueOrUpdateValue;
-
-    return {
-      read: args.getter,
-      onObserve: args.onObserve,
-    } satisfies DerivedAtom<Value>;
-  }
-
   if (isCreateCallbackAtomArgs(args)) {
     type UpdateValue = ValueOrUpdateValue;
     type UpdateResult = UpdateValueOrUpdateResult;
 
-    return {
+    const callbackAtom: CallbackAtom<UpdateValue, UpdateResult> = {
       write: args.setter,
-    } satisfies CallbackAtom<UpdateValue, UpdateResult>;
+    };
+
+    return callbackAtom;
   }
 
-  throw new Error(
-    "Failed to create atom as no required arguments were provided!"
-  );
+  const label: string = args.label ?? crypto.randomUUID();
+
+  if (isCreateMutableAtomArgs(args)) {
+    type Value = ValueOrUpdateValue;
+    type UpdateValue = UpdateValueOrUpdateResult;
+
+    const mutableAtom: MutableAtom<Value, UpdateValue> = {
+      read: defaultRead,
+      write: args.setter ?? defaultWrite,
+      initialValue: args.initialValue,
+      onObserve: args.onObserve,
+      label,
+    };
+
+    return mutableAtom;
+  }
+
+  if (isCreateDerivedAtomArgs(args)) {
+    type Value = ValueOrUpdateValue;
+    const derivedAtom: DerivedAtom<Value> = {
+      read: args.getter,
+      onObserve: args.onObserve,
+      label,
+    };
+
+    return derivedAtom;
+  }
+
+  throw new Error('Failed to create atom as no required arguments were provided!');
 }
 
 const t1 = createAtom<number, string>({
@@ -91,9 +100,8 @@ const t3 = createAtom({
   },
 });
 
-
 const storeActions = {
   peek: () => {},
   set: () => {},
 } as unknown as StoreActions;
-const res = t2.write(storeActions, 2);
+const res = t2.write(storeActions, String(2));

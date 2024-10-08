@@ -1,16 +1,14 @@
-import {
-  AtomValueGetter,
-  AtomValueSetter,
-  AtomOnObserve,
-} from "../types";
+import { AtomValueGetter, AtomValueSetter, AtomOnObserve } from '../types';
 
 export type CreateDerivedAtomArgs<Value> = {
+  label?: string;
   getter: AtomValueGetter<Value>;
   onObserve?: AtomOnObserve<Value>;
   initialValue?: never;
 };
 
 export type CreateMutableAtomArgs<Value, UpdateValue> = {
+  label?: string;
   initialValue: Value;
   onObserve?: AtomOnObserve<Value>;
   setter?: AtomValueSetter<UpdateValue, Value>;
