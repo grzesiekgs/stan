@@ -51,8 +51,6 @@ export const getAtomStateFromStateMap = <Value>(
   return newAtomState;
 };
 
-export const isAtomStateInStateMap = (atom: StatefulAtom<any>, atomToStateMap: AtomToStateMap) =>
-  atomToStateMap.has(atom);
 // TODO Better name required.
 export const createProxiedGet =
   (
@@ -63,18 +61,17 @@ export const createProxiedGet =
   (atom) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     const derivedAtomState = getAtomStateFromStateMap(derivedAtom, atomToStateMap);
+    // Read atom before adding deriverAtom as deriver of atom.
+    // When atom value updates, it marks all it's derivers as not fresh, and clears derivers set.
+    // If other derivers of atom are currently observed, then they must be scheduled for recalculate and that recalculate is already in progress.
+    const atomValue = get(atom);
     // NOTE This possibly leaks memory, because unmounted atom could be still tracking other atoms.
+    // Althout dependencies set is needed to (or rather planned) onl track isObserved status, so reference can be cleared.
+    // Any other problem there?
     addAtomDependency(derivedAtomState, atom);
     addAtomDeriver(atomState, derivedAtom);
-    console.log(
-      'PROXIED_GET',
-      derivedAtom.label,
-      atom.label,
-      derivedAtomState.dependencies,
-      atomState.derivers,
-      atomState.dependencies
-    );
-    return get(atom);
+
+    return atomValue;
   };
 
 export const addAtomDeriver = (atomState: AtomState<any>, deriverAtom: StatefulAtom<any>): void => {

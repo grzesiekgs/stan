@@ -1,4 +1,4 @@
-import { SetStateAction, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { SetStateAction, useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { createAtom } from './stan/atom/atom';
 import { createStore } from './stan/store/store';
 import { AnyAtom, Atom, MutableAtom, StatefulAtom } from './stan/types';
@@ -7,42 +7,84 @@ import { isMutableAtom, isStatefulAtom, isWritableAtom } from './stan/atom/utils
 import { testStore } from './testStore';
 import { useAtom, useSetAtomValue } from './hooks';
 
-const mutableAtom = createAtom({
-  label: 'mutable',
-  initialValue: 0,
+const firstAtom = createAtom({
+  label: 'first',
+  initialValue: 1,
 });
 
-const derivedAtom = createAtom({
-  label: 'derived',
+// const firstProxyAtom = createAtom({
+//   label: 'firstProxy',
+//   getter: ({ get }) => get(firstAtom),
+// });
+
+const secondAtom = createAtom({
+  label: 'second',
+  initialValue: 2,
+});
+
+const sumAtom = createAtom({
+  label: 'sum',
   getter: ({ get }) => {
-    return get(mutableAtom) * 2;
+    return get(firstAtom) + get(secondAtom);
   },
 });
 
-const callbackAtom = createAtom({
-  setter: ({ set }, update: string) => set(mutableAtom, Number(update)),
+const sumProxyAtom = createAtom({
+  label: 'sumProxy',
+  getter: ({ get }) => {
+    return get(sumAtom);
+  },
 });
 
-// testStore.observeAtom(mutableAtom, (update) => {
-//   console.log('APP MUTABLE OBSERVER', update);
+const firstPlusSumAtom = createAtom({
+  label: 'fist+sum',
+  getter: ({ get }) => {
+    return get(firstAtom) + get(sumAtom);
+  },
+});
+
+const firstPlusSumProxyAtom = createAtom({
+  label: 'fist+sum Proxy',
+  getter: ({ get }) => {
+    return get(firstPlusSumAtom);
+  },
+});
+
+const firstPlusPlusSumAtom = createAtom({
+  label: 'first+sum+sum',
+  getter: ({ get }) => {
+    return get(firstAtom) + get(sumProxyAtom) + get(sumAtom);
+  },
+});
+
+// const sumProxyProxyAtom = createAtom({
+//   label: 'sumProxyProxy',
+//   getter: ({ get }) => {
+//     return get(sumProxyAtom);
+//   },
 // });
-
-testStore.observeAtom(derivedAtom, (update) => {
-  console.log('APP DERIVED OBSERVER', update);
-});
 
 export default function App() {
   // const [mutable, setMutable] = useAtom(mutableAtom);
-  const setMutable = useSetAtomValue(mutableAtom);
-  const [derived, setDerived] = useAtom(derivedAtom);
+  const [first, setFirst] = useAtom(firstAtom);
+  const [second, setSecond] = useAtom(secondAtom);
+  // const [sum] = useAtom(sumProxyAtom);
+  const [firstPlusSum] = useAtom(firstPlusPlusSumAtom);
+  // const [second, setSecond] = useAtom(secondAtom);
+  // const [sum] = useAtom(sumProxyAtom);
   // const [callback, setCallback] = useAtom(callbackAtom);
 
+  console.warn('RENDER');
   return (
     <div className='App'>
-      <button onClick={() => setMutable((val) => val - 1)}>-</button>
-      <button onClick={() => setMutable((val) => val + 1)}>+</button>
-      <div>derived: {derived}</div>
-      {/* <div>derived: {derived}</div> */}
+      <div>first: {first}</div>
+      <button onClick={() => setFirst((val) => val - 1)}>-</button>
+      <button onClick={() => setFirst((val) => val + 1)}>+</button>
+      <div>second: {second}</div>
+      <button onClick={() => setSecond((val) => val - 1)}>-</button>
+      <button onClick={() => setSecond((val) => val + 1)}>+</button>
+      {/* <div>sum: {sum}</div> */}
+      <div>first+sum: {firstPlusSum}</div>
     </div>
   );
 }

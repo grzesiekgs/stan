@@ -1,91 +1,112 @@
 import { createAtom } from '../atom/atom';
 import { isMutableAtom } from '../atom/utils';
 import {
-  AtomState,
   AtomToStateMap,
   DerivedAtom,
-  ReadAtomArgs,
   StatefulAtom,
   Store,
   StoreValueGetter,
   StoreValueSetter,
 } from '../types';
-import {
-  addAtomDependency,
-  createNewAtomState,
-  createProxiedGet,
-  getAtomStateFromStateMap,
-} from './utils';
+import { createProxiedGet, getAtomStateFromStateMap } from './utils';
 
 export const createStore = (): Store => {
   const atomToStateMap: AtomToStateMap = new WeakMap();
   (window as any).showState = () => console.log(atomToStateMap);
-  const recalculateAtomDerivers = (atom: StatefulAtom<any>) => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    const derivers = atomState.derivers;
-    console.log('>>> UPDATE', atom.label);
-    if (!derivers?.size) {
-      console.log('>>> SKIP UPDATE', atom.label);
-      return;
+  const deriversToRecalculate: Set<DerivedAtom<any>> = new Set();
+  let recalculatePromise: null | Promise<void> = null;
+  const recalculateDerivers = () => {
+    if (!deriversToRecalculate.size) {
+      console.warn('No derivers to recalc??');
     }
+    // TODO This could possibly be optimized, because right now set has to be sorted and then array has to be iterated over.
+    const orderedDeriversToRecalculate: DerivedAtom<any>[] = [];
+    const start = performance.now();
+    const start1 = Date.now();
 
-    derivers.forEach((deriverAtom) => {
+    deriversToRecalculate.forEach((deriverAtom) => {
       const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
-      // Don't update deriver atom if it's not observed by anything. It will recaluclate when observation will start.
-      if (!deriverAtomState.isObserved || deriverAtomState.isFresh) {
-        console.log(
-          '>>> SKIP DERIVER',
-          atom.label,
-          deriverAtom.label,
-          deriverAtomState.isFresh,
-          deriverAtomState.value
-        );
-        return;
-      }
-      derivers.delete(deriverAtom);
-      console.log('>>> UPDATE DERIVER', atom.label, deriverAtom.label);
-      // Create getter which will mark current atom as deriver of it's dependencies.
-      const value = get(deriverAtom);
+      const orderedDeriverOfDeriverIndex = orderedDeriversToRecalculate.findIndex(
+        (orderedDeriver) => deriverAtomState.derivers?.has(orderedDeriver)
+      );
 
-      return updateAtomValue(deriverAtom, value);
+      if (orderedDeriverOfDeriverIndex > -1) {
+        orderedDeriversToRecalculate.splice(orderedDeriverOfDeriverIndex, 0, deriverAtom);
+      } else {
+        orderedDeriversToRecalculate.push(deriverAtom);
+      }
     });
-    console.log('>>> DONE UPDATE', atom.label);
-    // Clear derivers list after all derivers update.
+
+    // NOTE 'get' might be triggered for unobsered or fresh atom. Not sure should just ignore it?
+    orderedDeriversToRecalculate.forEach(get);
+
+    deriversToRecalculate.clear();
+    recalculatePromise = null;
+    console.log(performance.now() - start, Date.now() - start1);
+  };
+  // Optimistically mark derivers for recalculation.
+  // They will get recalculated only if marked as not fresh.
+  // They could be marked during scueduled recalculate.
+  const markAtomDeriversForRecalculation = (atom: StatefulAtom<any>) => {
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+
+    if (atomState.derivers) {
+      const derivers = atomState.derivers;
+      // TODO Just debug, should not happen. Remove later if will not occur.
+      if (!derivers.size) {
+        console.warn('No derivers to recalculate!', atom.label);
+      }
+      // Mark atom and it's derivers for recalculation.
+      // Ignore order as it will be tahen care of in recalculateDerivers.
+      derivers.forEach((deriverAtom) => {
+        deriversToRecalculate.add(deriverAtom);
+
+        markAtomDeriversForRecalculation(deriverAtom);
+      });
+      // OUTDATED
+      // Add each deriver to recalculation set, and then recure call this function for each of derivers.
+      // TODO There might be needed some more advanced thing.
+      // Use two separate forEach calls, in order to prioritize update of currently processed derivers,
+      // as they are deeper in derivers tree.
+      // TODO Could use Set.intersection but it's quite fresh addition to ES, use it anyway?
+      // derivers.forEach((deriverAtom) => deriversToRecalculate.add(deriverAtom));
+      //derivers.forEach(markAtomDeriversForRecalculation);
+    }
   };
 
+  const scheduleRecalculateAtomDerivers = () => {
+    recalculatePromise = recalculatePromise ?? Promise.resolve().then(recalculateDerivers);
+  };
+  // TODO Whats the point of returning value there? Combine it with 'read' or split.
   const updateAtomValue = <Value>(atom: StatefulAtom<Value>, value: Value): Value => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    console.log('++ MARK ATOM AS FRESH', atom.label, value);
     atomState.isFresh = true;
-
+    // Skip update if value did not change.
     if (atomState.value === value) {
       return value;
     }
 
     atomState.value = value;
-    // Mark each deriver as not fresh.
-    atomState.derivers?.forEach((deriverAtom) => {
-      const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
-      console.log('-- MARK DERIVER AS NOT FRESH', atom.label, deriverAtom.label);
-      deriverAtomState.isFresh = false;
-    });
-
-    console.log('UPDATED ATOM', atom.label, atomState.value, atomState);
     // If StatefulAtom has been updated - make sure to update all it's observed derivers.
-    // TODO Most likely I want to create queue out there, instea
-    Promise.resolve(atom).then(recalculateAtomDerivers);
+    if (atomState.derivers) {
+      // Mark direct derivers as not fresh. They will need to recalculate efectivelly calling this function, and marking their derivers as not fresh.
+      atomState.derivers.forEach((deriverAtom) => {
+        const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
+
+        deriverAtomState.isFresh = false;
+      });
+      atomState.derivers = undefined;
+    }
 
     return value;
   };
 
   const get: StoreValueGetter = (atom) => {
-    console.log('GET', atom.label);
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-
+    // When to mark atom as not observed??
     atomState.isObserved = true;
     // When state is marked as fresh, theres was no update since last read, therefore return value.
     if (atomState.isFresh) {
-      console.log('GET_FRESH', atom.label, atomState.value);
       return atomState.value;
     }
     // Safety check to satisfy TS, mutable atom is always frash.
@@ -94,19 +115,15 @@ export const createStore = (): Store => {
         'Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!'
       );
     }
-
     // Create getter which will mark current atom as deriver of it's dependencies.
     const value = atom.read({ get: createProxiedGet(atom, atomToStateMap, get), peek }, atomState);
-    console.log('GET_READ', atom.label, value);
 
     return updateAtomValue(atom, value);
   };
   const peek: StoreValueGetter = (atom) => {
-    console.log('PEEK', atom.label);
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    // When state is marked as fresh, theres no question asked, just return value.
+    // When state is ma rked as fresh, theres no question asked, just return value.
     if (atomState.isFresh) {
-      console.log('PEEK_FRESH', atom.label, atomState.value);
       return atomState.value;
     }
 
@@ -118,14 +135,19 @@ export const createStore = (): Store => {
 
     // TODO Explain how `peek` is different from `get`.
     const value = atom.read({ get, peek }, atomState);
-    console.log('PEEK_READ', atom.label, value);
 
     return updateAtomValue(atom, value);
   };
+
   const set: StoreValueSetter = (atom, update) => {
     const value = atom.write({ peek, set }, update);
 
     if (isMutableAtom(atom)) {
+      // NOTE Schedule recalculate before derivers are marked for recalculation.
+      // Not 100% sure is this good idea.
+      scheduleRecalculateAtomDerivers();
+      markAtomDeriversForRecalculation(atom);
+      // Update value at the end, because it will clear atom derivers.
       updateAtomValue(atom, value);
     }
 
@@ -138,10 +160,7 @@ export const createStore = (): Store => {
     observeAtom(atom, listener) {
       const observerAtom = createAtom({
         label: `observerOf${atom.label}`,
-        getter: ({ get }) => {
-          console.log('OBSERVER GET', atom.label);
-          listener(get(atom));
-        },
+        getter: ({ get }) => listener(get(atom)),
       });
       get(observerAtom);
       // Pretend that observerAtom is observed by some entity, so it will recalculate on deps change.
@@ -154,7 +173,7 @@ export const createStore = (): Store => {
       };
     },
     resetAtom(atom) {
-      // TODO Consider checking is atom actually mounted.
+      // TODO Consider checking is atom actually mounted. (what for??)
     },
   };
 

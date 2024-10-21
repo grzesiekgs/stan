@@ -17,7 +17,6 @@ const buildSyncExternalStoreArgs = <
     return [
       (callback) => testStore.observeAtom(atom, callback),
       () => {
-        console.log('HOOK');
         const res = testStore.peekAtom(atom);
 
         return res as Value;

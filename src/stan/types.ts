@@ -89,6 +89,7 @@ export type WritableAtom<UpdateValue, UpdateResult> = {
 
 export type DerivedAtom<Value> = {
   label: string;
+  // TODO Add onMount? onObserve will be called each time when atom is started being observed. onMount would be called when atom is first mounted to store??
   onObserve?: AtomOnObserve<Value>;
   read: ReadAtom<Value>;
 };
