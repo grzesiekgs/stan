@@ -6,7 +6,9 @@ import {
   StatefulAtom,
   Store,
   StoreValueGetter,
+  StoreValueScheduledSetter,
   StoreValueSetter,
+  WritableAtom,
 } from '../types';
 import { createProxiedGet, getAtomStateFromStateMap } from './utils';
 
@@ -100,7 +102,7 @@ export const createStore = (): Store => {
 
     return value;
   };
-
+  // TODO Unify get with peek? How to deal with isObserved?
   const get: StoreValueGetter = (atom) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // When to mark atom as not observed??
@@ -116,13 +118,16 @@ export const createStore = (): Store => {
       );
     }
     // Create getter which will mark current atom as deriver of it's dependencies.
-    const value = atom.read({ get: createProxiedGet(atom, atomToStateMap, get), peek }, atomState);
+    const value = atom.read(
+      { get: createProxiedGet(atom, atomToStateMap, get), peek, scheduleSet },
+      atomState
+    );
 
     return updateAtomValue(atom, value);
   };
   const peek: StoreValueGetter = (atom) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    // When state is ma rked as fresh, theres no question asked, just return value.
+    // When state is marked as fresh, theres no question asked, just return value.
     if (atomState.isFresh) {
       return atomState.value;
     }
@@ -134,7 +139,7 @@ export const createStore = (): Store => {
     }
 
     // TODO Explain how `peek` is different from `get`.
-    const value = atom.read({ get, peek }, atomState);
+    const value = atom.read({ get, peek, scheduleSet }, atomState);
 
     return updateAtomValue(atom, value);
   };
@@ -154,8 +159,14 @@ export const createStore = (): Store => {
     return value;
   };
 
+  let scheduledSetPromise: null | Promise<void> = null;
+  let scheduledSetJobs: null | Set<[WritableAtom<any, any>, any]> ();
+  const scheduleSet: StoreValueScheduledSetter = (atom, update) => {
+
+  };
+
   const storeApi: Store = {
-    peekAtom: get,
+    peekAtom: peek,
     setAtom: set,
     observeAtom(atom, listener) {
       const observerAtom = createAtom({

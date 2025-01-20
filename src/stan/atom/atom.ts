@@ -27,10 +27,14 @@ const defaultRead: ReadAtom<any> = (args, atomState) => {
   return atomState.value;
 };
 
-export function createAtom<Value, UpdateValue = Value>(
+export function createAtom<Value>(
+  args: CreateMutableAtomArgs<Value, Value> | CreateDerivedAtomArgs<Value>
+): typeof args extends CreateDerivedAtomArgs<Value>
+  ? MutableAtom<Value, Value>
+  : DerivedAtom<Value>;
+export function createAtom<Value, UpdateValue>(
   args: CreateMutableAtomArgs<Value, UpdateValue>
 ): MutableAtom<Value, UpdateValue>;
-export function createAtom<Value>(args: CreateDerivedAtomArgs<Value>): DerivedAtom<Value>;
 export function createAtom<UpdateValue, UpdateResult>(
   args: CreateCallbackAtomArgs<UpdateValue, UpdateResult>
 ): CallbackAtom<UpdateValue, UpdateResult>;

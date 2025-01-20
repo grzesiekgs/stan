@@ -5,8 +5,16 @@ export type StoreValueSetter = <Update, UpdateResult>(
   atom: WritableAtom<Update, UpdateResult>,
   update: Update
 ) => UpdateResult;
+export type StoreValueScheduledSetter = <Update, UpdateResult>(
+  atom: WritableAtom<Update, UpdateResult>,
+  update: Update
+) => void;
 
-export type ReadAtomArgs = { get: StoreValueGetter; peek: StoreValueGetter };
+export type ReadAtomArgs = {
+  get: StoreValueGetter;
+  peek: StoreValueGetter;
+  scheduleSet: StoreValueScheduledSetter;
+};
 export type ReadAtom<Value> = (args: ReadAtomArgs, atomState: AtomState<Value>) => Value;
 
 export type WriteAtomArgs = { peek: StoreValueGetter; set: StoreValueSetter };
