@@ -41,7 +41,6 @@ const firstPlusSumProxyAtom = createDerivedAtom(({ get }) => {
 });
 
 const firstPlusPlusSumAtom = createDerivedAtom(({ get }) => {
-
   return get(firstAtom) + get(sumProxyAtom) + get(sumAtom);
 }, undefined, {
   storeLabel: 'first+sum+sumProxy',
@@ -61,8 +60,9 @@ export default function App() {
   const setFirst = useSetAtomCallback(firstAtom);
   const second = useAtomValue(secondAtom);
   const setSecond = useSetAtomCallback(secondAtom);
-  const firstPlusSum = useAtomValue(firstPlusPlusSumAtom);
-  
+  const firstPlusSum = useAtomValue(firstPlusSumAtom);
+  const firstPlusSumProxy = useAtomValue(firstPlusSumProxyAtom);
+  const firstPlusPlusSum = useAtomValue(firstPlusPlusSumAtom);
   console.warn('RENDER', ++renderCount.current);
   
   return (
@@ -74,7 +74,8 @@ export default function App() {
       <button onClick={() => setSecond((val) => val - 1)}>-</button>
       <button onClick={() => setSecond((val) => val + 1)}>+</button>
       {/* <div>sum: {sum}</div> */}
-      <div>first+sum: {firstPlusSum}</div>
+      <div>first+sum: {firstPlusSum} / {firstPlusSumProxy}</div>
+      <div>first+sum+sum: {firstPlusPlusSum}</div>
     </div>
   );
 }
