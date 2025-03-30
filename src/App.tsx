@@ -1,62 +1,52 @@
-import { SetStateAction, useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
-import { createAtom } from './stan/atom/atom';
-import { createStore } from './stan/store/store';
-import { AnyAtom, Atom, MutableAtom, StatefulAtom } from './stan/types';
+import { createAtom, createDerivedAtom, createMutableAtom } from './stan/createAtom/createAtom';
 import './styles.css';
-import { isMutableAtom, isStatefulAtom, isWritableAtom } from './stan/atom/utils';
-import { testStore } from './testStore';
-import { useAtom, useSetAtomValue } from './hooks';
+import { useAtomValue, useSetAtomCallback, useSetAtomValue } from './hooks';
+import { useRef, useState } from 'react';
 
-const firstAtom = createAtom({
-  label: 'first',
-  initialValue: 1,
-});
-
+const firstAtom = createMutableAtom(1, undefined, {
+  storeLabel: 'first'
+})
+  
 // const firstProxyAtom = createAtom({
 //   label: 'firstProxy',
 //   getter: ({ get }) => get(firstAtom),
 // });
 
-const secondAtom = createAtom({
-  label: 'second',
-  initialValue: 2,
+const secondAtom = createMutableAtom(2, undefined, {
+  storeLabel: 'second'
+})
+
+const sumAtom = createDerivedAtom(({ get }) => {
+  return get(firstAtom) + get(secondAtom);
+}, undefined, {
+  storeLabel: 'first+second',
 });
 
-const sumAtom = createAtom({
-  label: 'sum',
-  getter: ({ get }) => {
-    return get(firstAtom) + get(secondAtom);
-  },
+const sumProxyAtom = createDerivedAtom(({ get }) => {
+  return get(sumAtom);
+}, undefined, {
+  storeLabel: 'first+second proxy',
 });
 
-const sumProxyAtom = createAtom({
-  label: 'sumProxy',
-  getter: ({ get }) => {
-    return get(sumAtom);
-  },
+const firstPlusSumAtom = createDerivedAtom(({ get }) => {
+  return get(firstAtom) + get(sumAtom);
+}, undefined, {
+  storeLabel: 'fist+sum',
 });
 
-const firstPlusSumAtom = createAtom({
-  label: 'fist+sum',
-  getter: ({ get }) => {
-    return get(firstAtom) + get(sumAtom);
-  },
+const firstPlusSumProxyAtom = createDerivedAtom(({ get }) => {
+  return get(firstPlusSumAtom);
+}, undefined, {
+  storeLabel: 'fist+sum proxy',
 });
 
-const firstPlusSumProxyAtom = createAtom({
-  label: 'fist+sum Proxy',
-  getter: ({ get }) => {
-    return get(firstPlusSumAtom);
-  },
-});
+const firstPlusPlusSumAtom = createDerivedAtom(({ get }) => {
 
-const firstPlusPlusSumAtom = createAtom({
-  label: 'first+sum+sum',
-  getter: ({ get }) => {
-    return get(firstAtom) + get(sumProxyAtom) + get(sumAtom);
-  },
+  return get(firstAtom) + get(sumProxyAtom) + get(sumAtom);
+}, undefined, {
+  storeLabel: 'first+sum+sumProxy',
 });
-
+  
 // const sumProxyProxyAtom = createAtom({
 //   label: 'sumProxyProxy',
 //   getter: ({ get }) => {
@@ -65,16 +55,16 @@ const firstPlusPlusSumAtom = createAtom({
 // });
 
 export default function App() {
+  const renderCount = useRef(0);
   // const [mutable, setMutable] = useAtom(mutableAtom);
-  const [first, setFirst] = useAtom(firstAtom);
-  const [second, setSecond] = useAtom(secondAtom);
-  // const [sum] = useAtom(sumProxyAtom);
-  const [firstPlusSum] = useAtom(firstPlusPlusSumAtom);
-  // const [second, setSecond] = useAtom(secondAtom);
-  // const [sum] = useAtom(sumProxyAtom);
-  // const [callback, setCallback] = useAtom(callbackAtom);
-
-  console.warn('RENDER');
+  const first = useAtomValue(firstAtom);
+  const setFirst = useSetAtomCallback(firstAtom);
+  const second = useAtomValue(secondAtom);
+  const setSecond = useSetAtomCallback(secondAtom);
+  const firstPlusSum = useAtomValue(firstPlusPlusSumAtom);
+  
+  console.warn('RENDER', ++renderCount.current);
+  
   return (
     <div className='App'>
       <div>first: {first}</div>

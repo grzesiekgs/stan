@@ -1,6 +1,49 @@
-// STORE
+export type AtomReadArgs = {
+  get: StoreValueGetter;
+  peek: StoreValueGetter;
+  scheduleSet: StoreValueScheduledSetter;
+};
+export type ReadAtom<Value> = (args: AtomReadArgs, atomState: AtomState<Value>) => Value;
 
-export type StoreValueGetter = <Value>(atom: StatefulAtom<Value, any>) => Value;
+export type AtomWriteArgs = { peek: StoreValueGetter; set: StoreValueSetter };
+export type WriteAtom<UpdateValue, UpdateResult = UpdateValue> = (
+  args: AtomWriteArgs,
+  value: UpdateValue
+) => UpdateResult;
+// Only writable atoms have access to callSet.
+export type AtomOnObserve<Update> = [Update] extends [never] 
+  ? (args: { peek: StoreValueGetter }) => void | VoidFunction
+  : (args: { peek: StoreValueGetter, callSet: AtomSelfSetter<Update> }) => void | VoidFunction
+
+export type ReadableAtomType = 'mutable' | 'derived';
+export type WritableAtomType = 'mutable' | 'derived' | 'callback';
+export type AtomType = ReadableAtomType | WritableAtomType;
+
+export type ReadableAtom<Value, Update, AtomType extends ReadableAtomType = ReadableAtomType> = {
+  storeLabel?: string;
+  // TODO Add onMount? onObserve will be called each time when atom is started being observed.onMount would be called when atom is first mounted to store??
+  onObserve?: AtomOnObserve<Update>;
+  read: ReadAtom<Value>;
+  type: AtomType;
+};
+
+export type WritableAtom<UpdateValue, UpdateResult, AtomType extends WritableAtomType = WritableAtomType> = {
+  write: WriteAtom<UpdateValue, UpdateResult>;
+  type: AtomType;
+};
+
+export type MutableAtom<Value, Update = Value> = ReadableAtom<Value, Update, 'mutable'> &
+  WritableAtom<Update, Value, 'mutable'>;
+export type DerivedAtom<Value, UpdateValue = never, UpdateResult = UpdateValue> = [UpdateValue] extends [never]
+  ? ReadableAtom<Value, UpdateValue, 'derived'>
+  : ReadableAtom<Value, UpdateValue, 'derived'> & WritableAtom<UpdateValue, UpdateResult, 'derived'>;
+export type CallbackAtom<UpdateValue, UpdateResult = void> = WritableAtom<
+  UpdateValue,
+  UpdateResult,
+  'callback'
+>;
+
+export type StoreValueGetter = <Value, Update>(atom: ReadableAtom<Value, Update>) => Value;
 export type StoreValueSetter = <Update, UpdateResult>(
   atom: WritableAtom<Update, UpdateResult>,
   update: Update
@@ -10,43 +53,30 @@ export type StoreValueScheduledSetter = <Update, UpdateResult>(
   update: Update
 ) => void;
 
-export type ReadAtomArgs = {
-  get: StoreValueGetter;
-  peek: StoreValueGetter;
-  scheduleSet: StoreValueScheduledSetter;
-};
-export type ReadAtom<Value> = (args: ReadAtomArgs, atomState: AtomState<Value>) => Value;
-
-export type WriteAtomArgs = { peek: StoreValueGetter; set: StoreValueSetter };
-export type WriteAtom<UpdateValue, UpdateResult> = (
-  args: WriteAtomArgs,
-  value: UpdateValue
-) => UpdateResult;
-
-export type AtomValueObserver<Value> = (value: Value) => void;
-export type StoreValueObserver = <Value, UpdateValue>(
-  atom: StatefulAtom<Value, UpdateValue>,
-  observer: AtomValueObserver<Value>
+export type AtomObserver<Value> = (value: Value) => void;
+export type StoreValueObserver = <Value>(
+  atom: ReadableAtom<Value, any>,
+  observer: AtomObserver<Value>
 ) => VoidFunction;
-export type StoreValueResetter = <Value>(atom: StatefulAtom<Value>) => void;
+export type StoreValueResetter = <Value>(atom: ReadableAtom<Value, unknown>) => void;
 export type BaseAtomState = {
+  isObserved: boolean;
   // Is there a scenario where this Set would incorrectly prevent garbage collection?
   // If such case will be determined, then consider wrapping each DerivedAtom in WeakRef, which can be deref'ed.
-  isObserved: boolean;
-  dependencies?: Set<StatefulAtom<unknown>>;
-  derivers?: Set<DerivedAtom<unknown>>;
+  dependencies?: Set<ReadableAtom<unknown, unknown>>;
+  derivers?: Set<DerivedAtom<unknown, unknown, unknown>>;
 };
-export type InitialDerivedAtomState = BaseAtomState & {
+export type InitialAtomState = BaseAtomState & {
   isInitialized: false;
   isFresh: false;
   value: symbol; // AtomValueNotYetCalculatedSymbolType;
 };
 
-export type DerivedAtomState<Value> = BaseAtomState & {
-  isInitialized: true;
+export type DerivedAtomState<Value> = BaseAtomState & (InitialAtomState |{
+  isInitialized: boolean;
   isFresh: boolean;
   value: Value;
-};
+});
 
 export type MutableAtomState<Value> = BaseAtomState & {
   isInitialized: true;
@@ -55,7 +85,7 @@ export type MutableAtomState<Value> = BaseAtomState & {
 };
 
 export type AtomState<Value> =
-  | InitialDerivedAtomState
+  | InitialAtomState
   | DerivedAtomState<Value>
   | MutableAtomState<Value>;
 
@@ -66,7 +96,7 @@ export type StoreActions = {
   reset: StoreValueResetter;
 };
 
-export type AtomToStateMap = WeakMap<StatefulAtom<any>, AtomState<any>>;
+export type AtomToStateMap = WeakMap<ReadableAtom<any, any>, AtomState<any>>;
 
 export type Store = {
   peekAtom: StoreValueGetter;
@@ -74,83 +104,38 @@ export type Store = {
   setAtom: StoreValueSetter;
   resetAtom: StoreValueResetter;
 };
-
-// ATOM
+// Maybe setSelf should return result of calling setter?
 export type AtomSelfSetter<Value> = (value: Value) => void;
 
 export type AtomValueGetterArgs = Pick<StoreActions, 'get' | 'peek'>;
 export type AtomValueGetter<Value> = (getterArgs: AtomValueGetterArgs) => Value;
 
+export type Atom<
+  AT extends AtomType,
+  T1 extends any,
+  T2 extends any = AT extends 'derived' ? never : T1,
+  T3 extends AT extends 'derived' ? any : never = AT extends 'derived' ? T2 : never
+> = AT extends 'callback'
+  ? CallbackAtom<T1, T2>
+  : AT extends 'mutable'
+  ? MutableAtom<T1, T2>
+  : DerivedAtom<T1, T2, T3>;
+
+export type AnyAtom = 
+  | ReadableAtom<any, any>
+  | WritableAtom<any, any>
+  | (ReadableAtom<any, any> & WritableAtom<any, any>)
+
+// createAtom related types.
 export type AtomValueSetterArgs = Pick<StoreActions, 'peek' | 'set'>;
 export type AtomValueSetter<UpdateValue, UpdateResult = void> = (
   setterArgs: AtomValueSetterArgs,
   updateValue: UpdateValue
 ) => UpdateResult;
-export type AtomOnObserve<Value> = (args: {
-  setSelf: AtomSelfSetter<Value>;
-  peek: StoreValueGetter;
-}) => void | VoidFunction;
 
-export type WritableAtom<UpdateValue, UpdateResult> = {
-  write: WriteAtom<UpdateValue, UpdateResult>;
-};
 
-export type DerivedAtom<Value> = {
-  label: string;
-  // TODO Add onMount? onObserve will be called each time when atom is started being observed. onMount would be called when atom is first mounted to store??
-  onObserve?: AtomOnObserve<Value>;
-  read: ReadAtom<Value>;
-};
-
-export type MutableAtom<Value, UpdateValue = Value> = WritableAtom<UpdateValue, Value> &
-  DerivedAtom<Value> & {
-    initialValue: Value;
-  };
-
-export type CallbackAtom<Update, UpdateValue = void> = WritableAtom<Update, UpdateValue>;
-export type StatefulAtom<Value, UpdateValue = any> =
-  | DerivedAtom<Value>
-  | MutableAtom<Value, UpdateValue>;
-
-export type Atom<
-  Value,
-  UpdateValue = Value,
-  UpdateResult extends [Value] extends [never] ? any : Value = [Value] extends [never] ? any : Value
-> = [Value] extends [never]
-  ? CallbackAtom<UpdateValue, UpdateResult>
-  : [UpdateValue] extends [never]
-  ? DerivedAtom<Value>
-  : MutableAtom<Value, UpdateValue>;
-
-export type AnyAtom = DerivedAtom<any> | MutableAtom<any, any> | CallbackAtom<any, any>;
-
-const testMutable: Atom<number> = {
-  label: 'mutable',
-  initialValue: 0,
-  write: (a, v) => v,
-  read: () => 0,
-};
-
-const testMutable1: Atom<number, string> = {
-  label: 'mutable1',
-  initialValue: 0,
-  write: (a, v) => Number(v),
-  read: () => 0,
-};
-
-const testMutable2: Atom<number, string, number> = {
-  label: 'mutable2',
-  initialValue: 0,
-  write: (a, v) => Number(v),
-  read: () => 0,
-};
-
-const testDerived: Atom<number, never> = {
-  label: 'derived',
-  read: () => 0,
-  onObserve: () => {},
-};
-
-const testCallback: Atom<never, string, number> = {
-  write: (a, v) => Number(v),
-};
+export type CreateReadableAtomOptions<Update> ={
+  storeLabel?: string;
+  onObserve?: AtomOnObserve<Update>;
+  // TODO Add onMount? onObserve will be called each time when atom is started being observed, onMount would be called when atom is mounted to store??
+}

@@ -1,78 +1,111 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { isStatefulAtom, isWritableAtom } from './stan/atom/utils';
-import { Atom } from './stan/types';
-import { testStore } from './testStore';
+import { isReadableAtom, isWritableAtom } from './stan/createAtom/utils';
+import {
+  Atom,
+  CallbackAtom,
+  DerivedAtom,
+  MutableAtom,
+  ReadableAtom,
+  WritableAtom,
+} from './stan/types';
+import { createMutableAtom } from './stan/createAtom/createAtom';
+import { createStore } from './stan/store/store';
+// TODO Provide store via react context.
+const testStore = createStore();
 
-type InnerUpdate<Value, Result> = (update: Value) => Result;
-type AtomUpdater<Value, Result> = (update: InnerUpdate<Value, Result>) => Result;
+type SubscribeToStore = (callback: VoidFunction) => VoidFunction;
+type GetStoreSnapshot<Value> = () => Value;
+type SyncExternalStoreArgs<Value> = [SubscribeToStore, GetStoreSnapshot<Value>];
 
-const buildSyncExternalStoreArgs = <
-  Value,
-  UpdateValue,
-  UpdateResult extends [Value] extends [never] ? any : Value
->(
-  atom: Atom<Value, UpdateValue, UpdateResult>
-): [(callback: VoidFunction) => VoidFunction, () => Value] => {
-  if (isStatefulAtom(atom)) {
-    return [
-      (callback) => testStore.observeAtom(atom, callback),
-      () => {
-        const res = testStore.peekAtom(atom);
+const buildSyncExternalStoreArgs = <Value>(
+  readableAtom: ReadableAtom<Value, any>
+): SyncExternalStoreArgs<Value> => [
+  (callback) => testStore.observeAtom(readableAtom, callback),
+  () => testStore.peekAtom(readableAtom),
+];
 
-        return res as Value;
-      },
-    ];
-  }
-  console.warn('Tries to subscribe to non-readable atom');
-  return [() => () => undefined, () => null as Value];
-};
-
-export const useAtomValue = <
-  Value,
-  UpdateValue,
-  UpdateResult extends [Value] extends [never] ? any : Value
->(
-  atom: Atom<Value, UpdateValue, UpdateResult>
-): Value => {
-  const [subscribe, getSnapshot] = useMemo(() => buildSyncExternalStoreArgs(atom), [atom]);
+export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value, any>): Value => {
+  const [subscribe, getSnapshot] = useMemo(
+    () => buildSyncExternalStoreArgs(readableAtom),
+    [readableAtom]
+  );
   const value = useSyncExternalStore(subscribe, getSnapshot);
-  // TODO Throw error to simplify types?
+
   return value;
 };
 
-export const useSetAtomValue = <
-  Value,
-  UpdateValue,
-  UpdateResult extends [Value] extends [never] ? any : Value
->(
-  atom: Atom<Value, UpdateValue, UpdateResult>
-): AtomUpdater<UpdateValue, UpdateResult> =>
-  useCallback<AtomUpdater<UpdateValue, UpdateResult>>(
-    (possiblyUpdate): UpdateResult => {
-      // TODO Throw error to simplify types?
-      if (!isWritableAtom(atom)) {
-        throw new Error('Tried to write non-writable atom');
-      }
 
-      const update =
-        typeof possiblyUpdate === 'function'
-          ? possiblyUpdate(testStore.peekAtom(atom))
-          : possiblyUpdate;
+export type SetAtomValue<Update, Result> = (update: Update) => Result;
 
-      return testStore.setAtom(atom, update) as UpdateResult;
-    },
-    [atom]
+export const useSetAtomValue = <Update, Result>(
+  writableAtom: WritableAtom<Update, Result>
+): SetAtomValue<Update, Result> => {
+  if (!isWritableAtom(writableAtom)) {
+    throw new Error('Tried to write non-writable atom');
+  }
+
+  return useCallback<SetAtomValue<Update, Result>>(
+    (update) => testStore.setAtom<Update, Result>(writableAtom, update),
+    [writableAtom]
   );
-
-export const useAtom = <
-  Value,
-  UpdateValue,
-  UpdateResult extends [Value] extends [never] ? any : Value
->(
-  atom: Atom<Value, UpdateValue, UpdateResult>
-): [Value, AtomUpdater<UpdateValue, UpdateResult>] => {
-  const value = useAtomValue(atom);
-  const setValue = useSetAtomValue(atom);
-
-  return [value, setValue];
 };
+
+export type UpdateCallback<Value, Update> = (currentValue: Value) => Update;
+export type CallbackSetAtom<Update, Result, Value> = (updateCallback: UpdateCallback<Value, Update>) => Result;
+
+export function useSetAtomCallback<Update, Result>(
+  writableAtom: WritableAtom<Update, Result>
+): CallbackSetAtom<undefined, Update, Result>
+export function useSetAtomCallback<Update, Result, Value>(
+  writableAtom: WritableAtom<Update, Result> & ReadableAtom<Value, Update>
+): CallbackSetAtom<Update, Result, Value>
+export function useSetAtomCallback<Update, Result, Value>(
+  writableAtom: WritableAtom<Update, Result> | (WritableAtom<Update, Result> & ReadableAtom<Value, Update>)
+): CallbackSetAtom<Update, Result, typeof writableAtom extends ReadableAtom<infer Value, Update> ? Value : undefined> {
+  if (!isWritableAtom(writableAtom)) {
+    throw new Error('Tried to write non-writable atom');
+  }
+
+  type AtomValue = typeof writableAtom extends ReadableAtom<infer Value, Update> ? Value : undefined
+
+  return useCallback<CallbackSetAtom<Update, Result, AtomValue>>(
+    (updateCallback) => {
+      const updateCallbackValue = isReadableAtom<AtomValue, Update>(writableAtom) ? testStore.peekAtom(writableAtom) : undefined;
+      const updateValue = updateCallback(updateCallbackValue);
+
+      return testStore.setAtom<Update, Result>(writableAtom, updateValue);
+    },
+    [writableAtom]
+  );
+};
+
+
+// TEST
+const mutableAtom = createMutableAtom(0);
+const mutable = useAtomValue(mutableAtom);
+const setMutable = useSetAtomValue(mutableAtom);
+const setMutableResult = setMutable(0);
+const setMutableCallback = useSetAtomCallback(mutableAtom);
+const setMutableCallbackResult = setMutableCallback((value) => value + 1);
+
+
+
+
+const mutableFunctionAtom = createMutableAtom(() => 0);
+const mutableFunction = useAtomValue(mutableFunctionAtom);
+const setMutableFunction = useSetAtomValue(mutableFunctionAtom);
+const setMutableFunctionResult = setMutableFunction(() => 0);
+const setMutableFunctionCallback = useSetAtomCallback(mutableFunctionAtom);
+const setMutableFunctionCallbackResult = setMutableFunctionCallback((value) => value + 1);
+
+
+
+
+
+const mutableWithWriteAtom = createMutableAtom<number, string>(0, (update) => Number(update));
+const mutableWithWrite = useAtomValue(mutableWithWriteAtom);
+const setMutableWithWrite = useSetAtomValue(mutableWithWriteAtom);
+const setMutableWithWriteResult = setMutableWithWrite('0');
+
+
+type TestMutableCallbackType = CallbackSetAtom<string, number, typeof mutableWithWriteAtom extends ReadableAtom<infer Value, string> ? Value : undefined>
