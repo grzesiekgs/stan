@@ -163,6 +163,11 @@ export const createStore = (): Store => {
 
     return value;
   };
+  // Seems like the only difference between 'get' and 'peek' should be that 'peek' should not start observing atom that is being read.
+  // Still, when we are reading derived atom, it should subscribe to it's dependencies, which (right now) would mark atom as being observed,
+  // (see possiblyStartObservingAtom in 'get'), which is not correct.
+  // Atom should be marked as observed only if it (or any of it's derivers) is marked as observed.
+  // Therefore, seems like 'get' should accept additional argument, which will control observability, and will be passed to createDerivedAtomGetter.
   const peek: StoreValueGetter = (atom) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // When state is marked as fresh, theres no question asked, just return value.
@@ -176,7 +181,10 @@ export const createStore = (): Store => {
       );
     }
     // TODO Explain how `peek` is different from `get`.
-    const value = atom.read({ get: createDerivedAtomGetter(atom, atomToStateMap, get), peek, scheduleSet }, atomState);
+    const value = atom.read(
+      { get: createDerivedAtomGetter(atom, atomToStateMap, get), peek, scheduleSet },
+      atomState
+    );
 
     updateAtomValue(atom, value);
 
