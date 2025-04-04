@@ -33,7 +33,9 @@ export type WritableAtom<UpdateValue, UpdateResult, AtomType extends WritableAto
 };
 
 export type MutableAtom<Value, Update = Value> = ReadableAtom<Value, Update, 'mutable'> &
-  WritableAtom<Update, Value, 'mutable'>;
+  WritableAtom<Update, Value, 'mutable'> & {
+    initialValue: Value
+  }
 export type DerivedAtom<Value, UpdateValue = never, UpdateResult = UpdateValue> = [UpdateValue] extends [never]
   ? ReadableAtom<Value, UpdateValue, 'derived'>
   : ReadableAtom<Value, UpdateValue, 'derived'> & WritableAtom<UpdateValue, UpdateResult, 'derived'>;

@@ -27,6 +27,7 @@ export function createMutableAtom<Value, UpdateValue = Value>(
 ): MutableAtom<Value, UpdateValue> {
   return {
     type: 'mutable',
+    initialValue: value,
     read: (_, atomState) => {
       // Once atom is initialized, value is taken from atomState.
       if (atomState.isInitialized) {
@@ -38,6 +39,7 @@ export function createMutableAtom<Value, UpdateValue = Value>(
     write: write ?? defaultWrite,
     onObserve: options?.onObserve,
     storeLabel: options?.storeLabel,
+    
   };
 }
 

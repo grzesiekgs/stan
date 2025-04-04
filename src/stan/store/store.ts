@@ -15,7 +15,7 @@ import {
   StoreValueSetter,
   WritableAtom,
 } from '../types';
-import { createDerivedAtomReadArgs, getAtomStateFromStateMap } from './utils';
+import { createDerivedAtomGetter, getAtomStateFromStateMap } from './utils';
 
 export const createStore = (): Store => {
   const atomToStateMap: AtomToStateMap = new WeakMap();
@@ -32,7 +32,7 @@ export const createStore = (): Store => {
     const start1 = Date.now();
 
     deriversToRecalculate.forEach((deriverAtom) => {
-      const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap, atomReadArgs);
+      const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
       const orderedDeriverOfDeriverIndex = orderedDeriversToRecalculate.findIndex(
         (orderedDeriver) => deriverAtomState.derivers?.has(orderedDeriver)
       );
@@ -55,8 +55,8 @@ export const createStore = (): Store => {
   // They will get recalculated only if marked as not fresh.
   // They could be marked during scueduled recalculate.
   const markAtomDeriversForRecalculation = (atom: ReadableAtom<any, any>) => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap, atomReadArgs);
-
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+    
     if (atomState.derivers) {
       const derivers = atomState.derivers;
       // TODO Just debug, should not happen. Remove later if will not occur.
@@ -86,7 +86,8 @@ export const createStore = (): Store => {
   };
   // TODO Whats the point of returning value there? Most likely combine it with 'read' or split.
   const updateAtomValue = <Value>(atom: ReadableAtom<Value, any>, value: Value): void => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap, atomReadArgs);
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+
     atomState.isFresh = true;
     // Skip update if value did not change.
     if (atomState.value === value) {
@@ -101,7 +102,7 @@ export const createStore = (): Store => {
     // Make sure to update all observed derivers.
     // Mark direct derivers as not fresh. They will need to recalculate efectivelly calling this function, and marking their derivers as not fresh.
     atomState.derivers.forEach((deriverAtom) => {
-      const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap, atomReadArgs);
+      const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
 
       deriverAtomState.isFresh = false;
     });
@@ -137,10 +138,9 @@ export const createStore = (): Store => {
   }
   // TODO Unify get with peek? How to deal with isObserved?
   const get: StoreValueGetter = (atom) => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap, atomReadArgs);
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // When to mark atom as not observed??
     possiblyStartObservingAtom(atom, atomState);
-    
     // When state is marked as fresh, theres was no update since last read, therefore return value.
     if (atomState.isFresh) {
       return atomState.value;
@@ -152,9 +152,10 @@ export const createStore = (): Store => {
         'Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!'
       );
     }
+    
     // Create getter which will mark current atom as deriver of it's dependencies.
     const value = atom.read(
-      createDerivedAtomReadArgs(atom, atomToStateMap, atomReadArgs),
+      { get: createDerivedAtomGetter(atom, atomToStateMap, get), peek, scheduleSet  },
       atomState
     );
 
@@ -163,19 +164,19 @@ export const createStore = (): Store => {
     return value;
   };
   const peek: StoreValueGetter = (atom) => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap, atomReadArgs);
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // When state is marked as fresh, theres no question asked, just return value.
     if (atomState.isFresh) {
       return atomState.value;
     }
 
-    if (isMutableAtom(atom)) {
+    if (!isDerivedAtom(atom)) {
       throw new Error(
         'Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!'
       );
     }
     // TODO Explain how `peek` is different from `get`.
-    const value = atom.read(atomReadArgs, atomState);
+    const value = atom.read({ get: createDerivedAtomGetter(atom, atomToStateMap, get), peek, scheduleSet }, atomState);
 
     updateAtomValue(atom, value);
 
@@ -184,7 +185,7 @@ export const createStore = (): Store => {
 
   const set: StoreValueSetter = (atom, update) => {
     const value = atom.write(atomWriteArgs, update);
-
+    
     if (isMutableAtom(atom)) {
       // NOTE Schedule recalculate before derivers are marked for recalculation.
       // Not 100% sure is this good idea.
@@ -215,7 +216,7 @@ export const createStore = (): Store => {
       // getAtomStateFromStateMap(observerAtom, atomToStateMap).isObserved = true;
       return () => {
         // TODO How to unobserve??? When to reset it?? Maybe reset isObserved and derivers on deriversUpdate???
-        getAtomStateFromStateMap(observerAtom, atomToStateMap, atomReadArgs).isObserved = false;
+        getAtomStateFromStateMap(observerAtom, atomToStateMap).isObserved = false;
         // possiblyStopObservingAtom(observerAtom)
         storeApi.resetAtom(observerAtom);
       };
