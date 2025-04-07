@@ -1,6 +1,7 @@
-import { isMutableAtom } from '../createAtom/utils';
+import { isMutableAtom } from '../atom/utils';
 import { AtomValueNotYetCalculatedSymbol } from '../symbols';
 import {
+  GetAtomValue,
   AtomState,
   AtomToStateMap,
   DerivedAtom,
@@ -8,19 +9,10 @@ import {
   InitialAtomState,
   MutableAtomState,
   ReadableAtom,
-  StoreValueGetter,
+  ReadAtomValue,
 } from '../types';
 
-export const createNewAtomState = <Value>(atom: ReadableAtom<Value, unknown>): AtomState<Value> => {
-  const initialAtomState: InitialAtomState = {
-    value: AtomValueNotYetCalculatedSymbol,
-    dependencies: undefined,
-    derivers: undefined,
-    isFresh: false,
-    isObserved: false,
-    isInitialized: false,
-  };
-
+export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => {
   if (isMutableAtom<Value, unknown>(atom)) {
     const mutableAtomState: MutableAtomState<Value> = {
       value: atom.initialValue,
@@ -28,19 +20,27 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value, unknown>): A
       derivers: undefined,
       isFresh: true,
       isObserved: false,
-      isInitialized: true,
+      onUnobserve: undefined,
     };
 
     return mutableAtomState;
   }
   // Just to highlight that initialAtomState satisfies DerivedAtomState type.
+  const initialAtomState: InitialAtomState = {
+    value: AtomValueNotYetCalculatedSymbol,
+    dependencies: undefined,
+    derivers: undefined,
+    isFresh: false,
+    isObserved: false,
+    onUnobserve: undefined,
+  };
   const derivedAtomState: DerivedAtomState<Value> = initialAtomState;
 
   return derivedAtomState;
 };
 
 export const getAtomStateFromStateMap = <Value>(
-  atom: ReadableAtom<Value, unknown>,
+  atom: ReadableAtom<Value>,
   atomToStateMap: AtomToStateMap
 ): AtomState<Value> => {
   const atomState = atomToStateMap.get(atom);
@@ -55,27 +55,27 @@ export const getAtomStateFromStateMap = <Value>(
   return newAtomState;
 };
 
-// TODO Better name required.
-export const createDerivedAtomGetter =
+export const createGetAtomValue =
   (
     derivedAtom: DerivedAtom<any, any, any>,
     atomToStateMap: AtomToStateMap,
-    get: StoreValueGetter
-  ): StoreValueGetter =>
-  (atom) => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+    readAtomValue: ReadAtomValue,
+  ): GetAtomValue<any> =>
+  (sourceAtom) => {
+    const sourceAtomState = getAtomStateFromStateMap(sourceAtom, atomToStateMap);
     const derivedAtomState = getAtomStateFromStateMap(derivedAtom, atomToStateMap);
-    // Read atom before adding deriverAtom as deriver of atom.
-    // When atom value updates, it marks all it's derivers as not fresh, and clears derivers set.
-    // If other derivers of atom are currently observed, then they must be scheduled for recalculate and that recalculate is already in progress.
-    const atomValue = get(atom);
-    // NOTE This possibly leaks memory, because unmounted atom could be still tracking other atoms.
-    // Althout dependencies set is needed to (or rather planned) onl track isObserved status, so reference can be cleared.
+    // Read atom value before adding derivedAtom as deriver of sourceAtom.
+    // When sourceAtom value updates, it marks all it's derivers as not fresh, and clears derivers set.
+    // If other derivers of sourceAtom are currently observed, then they must be scheduled for recalculate and that recalculate is already in progress.
+    // derivedAtom becames observed 
+    const sourceAtomValue = readAtomValue(sourceAtom, derivedAtomState.isObserved);
+    // NOTE This possibly leaks memory, because unmounted atom could be still tracking other atoms. (not sure??)
+    // Dependencies set most likely needed to track isObserved status.
     // Any other problem there?
-    addAtomDependency(derivedAtomState, atom);
-    addAtomDeriver(atomState, derivedAtom);
+    addAtomDependency(derivedAtomState, sourceAtom);
+    addAtomDeriver(sourceAtomState, derivedAtom);
 
-    return atomValue;
+    return sourceAtomValue;
   };
 
 export const addAtomDeriver = (

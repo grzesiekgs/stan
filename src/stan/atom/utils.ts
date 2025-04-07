@@ -7,6 +7,6 @@ export const isDerivedAtom = <Value, UpdateValue, UpdateResult>(atom: AnyAtom): 
 
 export const isCallbackAtom = <UpdateValue, UpdateResult>(atom: AnyAtom): atom is CallbackAtom<UpdateValue, UpdateResult> => atom.type === 'callback'
 
-export const isReadableAtom = <Value, UpdateValue>(atom: AnyAtom): atom is ReadableAtom<Value, UpdateValue> => 'read' in atom;
+export const isReadableAtom = <Value>(atom: AnyAtom): atom is ReadableAtom<Value> => 'read' in atom;
 
 export const isWritableAtom = <Value, UpdateValue>(atom: AnyAtom): atom is WritableAtom<Value, UpdateValue> => 'write' in atom;

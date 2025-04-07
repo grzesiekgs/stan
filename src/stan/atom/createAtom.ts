@@ -8,16 +8,17 @@ import {
   AtomType,
 } from '../types';
 
+const defaultRead: ReadAtom<any> = (_, atomState) => atomState.value;
 const defaultWrite: WriteAtom<any> = (args, value) => value;
 
 export function createMutableAtom<Value>(
   value: Value,
-  write?: WriteAtom<Value, Value>,
+  write?: undefined,
   options?: CreateReadableAtomOptions<Value>
 ): MutableAtom<Value, Value>;
 export function createMutableAtom<Value, UpdateValue>(
   value: Value,
-  write?: WriteAtom<UpdateValue, Value>,
+  write: WriteAtom<UpdateValue, Value>,
   options?: CreateReadableAtomOptions<UpdateValue>
 ): MutableAtom<Value, UpdateValue>;
 export function createMutableAtom<Value, UpdateValue = Value>(
@@ -28,37 +29,37 @@ export function createMutableAtom<Value, UpdateValue = Value>(
   return {
     type: 'mutable',
     initialValue: value,
-    read: (_, atomState) => {
-      // Once atom is initialized, value is taken from atomState.
-      if (atomState.isInitialized) {
-        return atomState.value;
-      }
-      // For first read call, value is taken from initilizer.
-      return value;
-    },
+    read: defaultRead,
     write: write ?? defaultWrite,
-    onObserve: options?.onObserve,
+    onObserve: options?.onObserve, 
     storeLabel: options?.storeLabel,
     
-  };
+  } as MutableAtom<Value, UpdateValue>;
 }
 
-export const createDerivedAtom = <Value, UpdateValue = never, UpdateResult = UpdateValue>(
+export function createDerivedAtom<Value>(
   read: ReadAtom<Value>,
-  ...[write, options]: [UpdateValue] extends [never]
-    ? [write?: undefined, options?: CreateReadableAtomOptions<never>]
-    : [
-        write: WriteAtom<UpdateValue, UpdateResult>,
-        options?: CreateReadableAtomOptions<UpdateValue>
-      ]
-): DerivedAtom<Value, UpdateValue, UpdateResult> =>
-  ({
+  write?: undefined,
+  options?: CreateReadableAtomOptions<never>
+): DerivedAtom<Value, never, never>;
+export function createDerivedAtom<Value, UpdateValue, UpdateResult = UpdateValue>(
+  read: ReadAtom<Value>,
+  write: WriteAtom<UpdateValue, UpdateResult>,
+  options?: CreateReadableAtomOptions<UpdateValue>
+): DerivedAtom<Value, UpdateValue, UpdateResult>;
+export function createDerivedAtom<Value, UpdateValue = never, UpdateResult = UpdateValue>(
+  read: ReadAtom<Value>,
+  write?: WriteAtom<UpdateValue, UpdateResult>,
+  options?: CreateReadableAtomOptions<UpdateValue>
+): DerivedAtom<Value, UpdateValue, UpdateResult> {
+  return {
     type: 'derived',
     read,
     write,
     onObserve: options?.onObserve,
     storeLabel: options?.storeLabel,
-  } as DerivedAtom<Value, UpdateValue, UpdateResult>);
+  } as DerivedAtom<Value, UpdateValue, UpdateResult>;
+}
 
 export const createCallbackAtom = <UpdateValue, UpdateResult = UpdateValue>(
   write: WriteAtom<UpdateValue, UpdateResult>

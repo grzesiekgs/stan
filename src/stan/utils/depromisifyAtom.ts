@@ -1,4 +1,4 @@
-import { createDerivedAtom, createMutableAtom } from '../createAtom/createAtom';
+import { createDerivedAtom, createMutableAtom } from '../atom/createAtom';
 import { DerivedAtom, ReadableAtom } from '../types';
 
 export type DepromisifyState = 'pending' | 'resolved' | 'rejected';
@@ -27,7 +27,7 @@ export type Depromisify<PromiseValue, PromiseError = Error> =
   | DepromisifyRejected<PromiseError>;
 
 export const depromisifyAtom = <PromiseValue, PromiseError>(
-  promiseAtom: ReadableAtom<Promise<PromiseValue>, unknown>
+  promiseAtom: ReadableAtom<Promise<PromiseValue>>
 ): DerivedAtom<Depromisify<PromiseValue, PromiseError>> => {
   const stateAtom = createMutableAtom<Depromisify<PromiseValue, PromiseError>>({ state: 'pending' });
   const promiseResolverAtom = createDerivedAtom<null>(({ get, scheduleSet }) => {
