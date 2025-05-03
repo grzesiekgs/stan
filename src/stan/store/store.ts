@@ -1,36 +1,36 @@
 import { createDerivedAtom } from '../atom/createAtom';
 import { isDerivedAtom, isMutableAtom, isWritableAtom } from '../atom/utils';
 import {
-  AtomOnObserve,
-  AtomReadArgs,
-  AtomState,
   AtomToStateMap,
-  AtomWriteArgs,
   DerivedAtom,
   ReadableAtom,
   Store,
-  StoreGet,
-  StorePeek,
   ScheduleWriteAtomValue,
-  StoreSet,
-  WritableAtom,
   ReadAtomValue,
   WriteAtomValue,
+  AtomState,
 } from '../types';
-import { createGetAtomValue, getAtomStateFromStateMap } from './utils';
+import { createGetAtomValue, getAtomStateFromStateMap, removeAtomsRelation } from './utils';
 
 export const createStore = (): Store => {
   const atomToStateMap: AtomToStateMap = new WeakMap();
   (window as any).showState = () => console.log(atomToStateMap);
+
   const deriversToRecalculate: Set<DerivedAtom<any, any, any>> = new Set();
+
+  const updatedAtoms: Set<ReadableAtom<any, any>> = new Set();
   let recalculatePromise: null | Promise<void> = null;
   const recalculateDerivers = () => {
-    if (!deriversToRecalculate.size) {
-      console.warn('No derivers to recalc??');
+    if (!updatedAtoms.size) {
+      console.warn('No updated atoms??');
     }
+
+    const deriversToRecalculate: Set<DerivedAtom<any, any, any>> = new Set();
+    const orderedDeriversToRecalculate: DerivedAtom<any, any, any>[] = [];
+
     // TODO This could be optimized, because right now set has to be sorted and then array has to be iterated over.
     // Therefore this is O(n) + O(1).
-    const orderedDeriversToRecalculate: DerivedAtom<any, any, any>[] = [];
+    
     const start = performance.now();
 
     deriversToRecalculate.forEach((deriverAtom) => {
@@ -64,8 +64,10 @@ export const createStore = (): Store => {
     recalculatePromise = null;
     console.log(performance.now() - start);
   };
-  
-  const markDerivedAtomForRecalculation = (atom: DerivedAtom<any, any, any>) => {
+
+  const markDerivedAtomForRecalculation = (
+    atom: DerivedAtom<any, any, any>
+  ) => {
     if (deriversToRecalculate.has(atom)) {
       return;
     }
@@ -74,6 +76,7 @@ export const createStore = (): Store => {
     const derivers = atomState.derivers;
 
     atomState.isFresh = false;
+
     deriversToRecalculate.add(atom);
 
     if (!derivers?.size) {
@@ -82,11 +85,9 @@ export const createStore = (): Store => {
 
     derivers.forEach(markDerivedAtomForRecalculation);
   };
+
   
-  const scheduleRecalculateAtomDerivers = () => {
-    recalculatePromise = recalculatePromise ?? Promise.resolve().then(recalculateDerivers);
-  };
-  
+
   const updateAtomValue = <Value>(atom: ReadableAtom<Value, any>, value: Value): void => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
 
@@ -101,16 +102,21 @@ export const createStore = (): Store => {
     if (!atomState.derivers?.size) {
       return;
     }
+    
+    atomState.derivers.forEach((derivedAtom) => {
+      removeAtomsRelation(atom, derivedAtom, atomToStateMap);
+      markDerivedAtomForRecalculation(derivedAtom);
+    });
+    
 
-    atomState.derivers.forEach(markDerivedAtomForRecalculation);
-    atomState.derivers = undefined;
+    atomState.derivers?.forEach(markDerivedAtomForRecalculation);
+
+    recalculatePromise = recalculatePromise ?? Promise.resolve().then(recalculateDerivers);
   };
 
-  const possiblyStartObservingAtom = <Value, Update>(
-    atom: ReadableAtom<Value>,
-  ) => {
+  const possiblyStartObservingAtom = <Value, Update>(atom: ReadableAtom<Value>) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    
+
     if (atomState.isObserved) {
       return;
     }
@@ -180,12 +186,9 @@ export const createStore = (): Store => {
 
   const writeAtomValue: WriteAtomValue = (atom, update) => {
     const value = atom.write({ peek: storeApi.peekAtom, set: storeApi.setAtom }, update);
-    
+
     if (isMutableAtom(atom)) {
       console.log('writeAtomValue', atom, update, value);
-      // NOTE Schedule recalculate before derivers are marked for recalculation.
-      // Not 100% sure is this good idea.
-      scheduleRecalculateAtomDerivers();
       // Update value at the end, because it will clear atom derivers.
       updateAtomValue(atom, value);
     }
@@ -204,7 +207,7 @@ export const createStore = (): Store => {
       const observerAtom = createDerivedAtom(
         ({ get }) => {
           const value = get(atom);
-          
+
           listener(value);
 
           return value;

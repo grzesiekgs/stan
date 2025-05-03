@@ -78,6 +78,9 @@ export const createGetAtomValue =
     return sourceAtomValue;
   };
 
+
+
+
 export const addAtomDeriver = (
   atomState: AtomState<any>,
   deriverAtom: DerivedAtom<any, any, any>
@@ -87,6 +90,19 @@ export const addAtomDeriver = (
   }
 
   atomState.derivers.add(deriverAtom);
+};
+
+export const removeAtomDeriver = (
+  atomState: AtomState<any>,
+  deriverAtom: DerivedAtom<any, any, any>
+): void => {
+  atomState.derivers?.delete(deriverAtom);
+
+  if (atomState.derivers?.size) {
+    return;
+  }
+
+  atomState.derivers = undefined;
 };
 
 export const addAtomDependency = (
@@ -99,3 +115,32 @@ export const addAtomDependency = (
 
   atomState.dependencies.add(dependencyAtom);
 };
+
+export const removeAtomDependency = (
+  atomState: AtomState<any>,
+  dependencyAtom: ReadableAtom<any, any>
+): void => {
+  atomState.dependencies?.delete(dependencyAtom);
+
+  if (atomState.dependencies?.size) {
+    return;
+  }
+
+  atomState.dependencies = undefined;
+};
+
+export const removeAtomsRelation = (dependencyAtom: ReadableAtom<any, any>, derivedAtom: DerivedAtom<any, any, any>, atomToStateMap: AtomToStateMap) => {
+  const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
+  const derivedAtomState = getAtomStateFromStateMap(derivedAtom, atomToStateMap);
+
+  removeAtomDeriver(dependencyAtomState, derivedAtom);
+  removeAtomDependency(derivedAtomState, dependencyAtom);
+}
+
+export const addAtomsRelation = (dependencyAtom: ReadableAtom<any, any>, derivedAtom: DerivedAtom<any, any, any>, atomToStateMap: AtomToStateMap) => {
+  const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
+  const derivedAtomState = getAtomStateFromStateMap(derivedAtom, atomToStateMap);
+
+  addAtomDeriver(dependencyAtomState, derivedAtom);
+  addAtomDependency(derivedAtomState, dependencyAtom);
+}
