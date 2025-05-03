@@ -64,7 +64,7 @@ export type StoreObserve = <Value>(
   observer: ObserveAtomValue<Value>
 ) => VoidFunction;
 
-export type ReadAtomValue = <Value>(atom: ReadableAtom<Value>, isObserved: boolean) => Value;
+export type ReadAtomValue = <Value>(atom: ReadableAtom<Value>, observe?: boolean) => Value;
 export type WriteAtomValue = <Update, UpdateResult>(
   atom: WritableAtom<Update, UpdateResult>,
   update: Update
@@ -89,18 +89,24 @@ export type BaseAtomState = {
   dependencies: Set<ReadableAtom<unknown>> | undefined;
   derivers: Set<DerivedAtom<unknown, unknown, unknown>> | undefined;
 };
+
+export enum AtomStateStatus {
+  FRESH = 'fresh',
+  STALE = 'stale',
+  PENDING = 'pending',
+}
 export type InitialAtomState = BaseAtomState & {
-  isFresh: false;
+  status: AtomStateStatus.STALE;
   value: symbol; // AtomValueNotYetCalculatedSymbolType;
 };
 
 export type DerivedAtomState<Value> = BaseAtomState & (InitialAtomState |{
-  isFresh: boolean;
+  status: AtomStateStatus;
   value: Value;
 });
 
 export type MutableAtomState<Value> = BaseAtomState & {
-  isFresh: true;
+  status: AtomStateStatus.FRESH;
   value: Value;
 };
 

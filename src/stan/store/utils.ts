@@ -10,6 +10,7 @@ import {
   MutableAtomState,
   ReadableAtom,
   ReadAtomValue,
+  AtomStateStatus,
 } from '../types';
 
 export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => {
@@ -18,7 +19,7 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<
       value: atom.initialValue,
       dependencies: undefined,
       derivers: undefined,
-      isFresh: true,
+      status: AtomStateStatus.FRESH,
       isObserved: false,
       onUnobserve: undefined,
     };
@@ -30,7 +31,7 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<
     value: AtomValueNotYetCalculatedSymbol,
     dependencies: undefined,
     derivers: undefined,
-    isFresh: false,
+    status: AtomStateStatus.STALE,
     isObserved: false,
     onUnobserve: undefined,
   };
@@ -54,32 +55,6 @@ export const getAtomStateFromStateMap = <Value>(
 
   return newAtomState;
 };
-
-export const createGetAtomValue =
-  (
-    derivedAtom: DerivedAtom<any, any, any>,
-    atomToStateMap: AtomToStateMap,
-    readAtomValue: ReadAtomValue,
-  ): GetAtomValue<any> =>
-  (sourceAtom) => {
-    const sourceAtomState = getAtomStateFromStateMap(sourceAtom, atomToStateMap);
-    const derivedAtomState = getAtomStateFromStateMap(derivedAtom, atomToStateMap);
-    // Read atom value before adding derivedAtom as deriver of sourceAtom.
-    // When sourceAtom value updates, it marks all it's derivers as not fresh, and clears derivers set.
-    // If other derivers of sourceAtom are currently observed, then they must be scheduled for recalculate and that recalculate is already in progress.
-    // derivedAtom becames observed 
-    const sourceAtomValue = readAtomValue(sourceAtom, derivedAtomState.isObserved);
-    // NOTE This possibly leaks memory, because unmounted atom could be still tracking other atoms. (not sure??)
-    // Dependencies set most likely needed to track isObserved status.
-    // Any other problem there?
-    addAtomDependency(derivedAtomState, sourceAtom);
-    addAtomDeriver(sourceAtomState, derivedAtom);
-
-    return sourceAtomValue;
-  };
-
-
-
 
 export const addAtomDeriver = (
   atomState: AtomState<any>,
@@ -128,19 +103,3 @@ export const removeAtomDependency = (
 
   atomState.dependencies = undefined;
 };
-
-export const removeAtomsRelation = (dependencyAtom: ReadableAtom<any, any>, derivedAtom: DerivedAtom<any, any, any>, atomToStateMap: AtomToStateMap) => {
-  const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
-  const derivedAtomState = getAtomStateFromStateMap(derivedAtom, atomToStateMap);
-
-  removeAtomDeriver(dependencyAtomState, derivedAtom);
-  removeAtomDependency(derivedAtomState, dependencyAtom);
-}
-
-export const addAtomsRelation = (dependencyAtom: ReadableAtom<any, any>, derivedAtom: DerivedAtom<any, any, any>, atomToStateMap: AtomToStateMap) => {
-  const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
-  const derivedAtomState = getAtomStateFromStateMap(derivedAtom, atomToStateMap);
-
-  addAtomDeriver(dependencyAtomState, derivedAtom);
-  addAtomDependency(derivedAtomState, dependencyAtom);
-}
