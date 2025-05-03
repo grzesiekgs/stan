@@ -1,0 +1,5 @@
+
+
+> @stan/react@0.0.1 typecheck /Users/grzesiek/workspace/private/stan/packages/react
+> tsc --noEmit
+

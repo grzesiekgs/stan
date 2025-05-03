@@ -1,0 +1,14 @@
+
+
+> playground@0.0.0 build /Users/grzesiek/workspace/private/stan/apps/playground
+> tsc && vite build
+
+[96m../../packages/core/src/store/store.ts[0m:[93m186[0m:[93m30[0m - [91merror[0m[90m TS2550: [0mProperty 'difference' does not exist on type 'Set<ReadableAtom<any, any>>'. Do you need to change your target library? Try changing the 'lib' compiler option to 'esnext' or later.
+
+[7m186[0m       ? previousDependencies.difference(currentDependencies)
+[7m   [0m [91m                             ~~~~~~~~~~[0m
+
+
+Found 1 error in ../../packages/core/src/store/store.ts[90m:186[0m
+
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 2.[39m

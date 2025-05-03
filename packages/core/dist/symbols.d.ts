@@ -1,0 +1,2 @@
+export declare const AtomValueNotYetCalculatedSymbol: unique symbol;
+export type AtomValueNotYetCalculatedSymbolType = typeof AtomValueNotYetCalculatedSymbol;

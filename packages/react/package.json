@@ -1,0 +1,27 @@
+{
+  "name": "@stan/react",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@stan/core": "workspace:*",
+    "react": "^19.1.0"
+  },
+  "devDependencies": {
+    "@stan/core": "workspace:*",
+    "@types/react": "19.1.2",
+    "react": "19.1.0",
+    "typescript": "5.8.3",
+    "vite": "6.3.4",
+    "vite-plugin-dts": "4.5.3"
+  }
+}
