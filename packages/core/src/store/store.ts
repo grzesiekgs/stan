@@ -97,14 +97,17 @@ export const createStore = (): Store => {
     status: AtomStateStatus
   ) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    // In theory, already stale atom, could be deriver of other atom which is also being marked as stale,
-    // therefore make sure to not override status, to ensure that atom will be updated in recalculate phase.
+    // Atom A could be marked as stale, but could be also deriver of atom B which is being marked as stale,
+    // and this could mark atom A as pending [look at end of this function].
+    // Therefore make sure to not override stale status, to ensure that atom will be updated in recalculate phase.
+    // This seems to apply only to derived atoms, therefore could be moved to derivedAtom.read (the IDEA for store modularization refactor).
     if (atomState.status !== AtomStateStatus.STALE) {
       atomState.status = status;
     }
     // Since atom is already in queue, it should mean that it's derivers are also already in queue.
     if (recalculateDeriversQueue.has(atom)) {
       // Check just to make sure that above statement is correct.
+      // This is for debugging purposes, remove later.
       if (
         Array.from(atomState.derivers ?? []).some(
           (deriverAtom) => !recalculateDeriversQueue.has(deriverAtom)
