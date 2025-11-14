@@ -1,9 +1,9 @@
 {
   "name": "stan",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
-  "description": "Stan monorepo",
+  "description": "Atomic state management library",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",

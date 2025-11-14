@@ -3,12 +3,12 @@ import { AtomValueNotYetCalculatedSymbol } from '../symbols';
 import {
   AtomState,
   AtomToStateMap,
-  DerivedAtom,
-  DerivedAtomState,
+  DependentAtomState,
   InitialAtomState,
   MutableAtomState,
   ReadableAtom,
   AtomStateStatus,
+  DependentAtom,
 } from '../types';
 
 export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => {
@@ -16,7 +16,7 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<
     const mutableAtomState: MutableAtomState<Value> = {
       value: atom.initialValue,
       dependencies: undefined,
-      derivers: undefined,
+      dependents: undefined,
       status: AtomStateStatus.FRESH,
       isObserved: false,
       onUnobserve: undefined,
@@ -28,12 +28,12 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<
   const initialAtomState: InitialAtomState = {
     value: AtomValueNotYetCalculatedSymbol,
     dependencies: undefined,
-    derivers: undefined,
+    dependents: undefined,
     status: AtomStateStatus.STALE,
     isObserved: false,
     onUnobserve: undefined,
   };
-  const derivedAtomState: DerivedAtomState<Value> = initialAtomState;
+  const derivedAtomState: DependentAtomState<Value> = initialAtomState;
 
   return derivedAtomState;
 };
@@ -53,34 +53,34 @@ export const getAtomStateFromStateMap = <Value>(
 
   return newAtomState;
 };
-
-export const addAtomDeriver = (
+// Possibly use weak refs?
+export const addAtomDependent = (
   atomState: AtomState<any>,
-  deriverAtom: DerivedAtom<any, any, any>
+  dependentAtom: DependentAtom<any>
 ): void => {
-  if (!atomState.derivers) {
-    atomState.derivers = new Set();
+  if (!atomState.dependents) {
+    atomState.dependents = new Set();
   }
 
-  atomState.derivers.add(deriverAtom);
+  atomState.dependents.add(dependentAtom);
 };
-
-export const removeAtomDeriver = (
+// Possibly use weak refs?
+export const removeAtomDependent = (
   atomState: AtomState<any>,
-  deriverAtom: DerivedAtom<any, any, any>
+  dependentAtom: DependentAtom<any>
 ): void => {
-  atomState.derivers?.delete(deriverAtom);
+  atomState.dependents?.delete(dependentAtom);
 
-  if (atomState.derivers?.size) {
+  if (atomState.dependents?.size) {
     return;
   }
 
-  atomState.derivers = undefined;
+  atomState.dependents = undefined;
 };
-
+// Possibly use weak refs?
 export const addAtomDependency = (
   atomState: AtomState<any>,
-  dependencyAtom: ReadableAtom<any, any>
+  dependencyAtom: ReadableAtom<any>
 ): void => {
   if (!atomState.dependencies) {
     atomState.dependencies = new Set();
@@ -88,10 +88,10 @@ export const addAtomDependency = (
 
   atomState.dependencies.add(dependencyAtom);
 };
-
+// Possibly use weak refs?
 export const removeAtomDependency = (
   atomState: AtomState<any>,
-  dependencyAtom: ReadableAtom<any, any>
+  dependencyAtom: ReadableAtom<any>
 ): void => {
   atomState.dependencies?.delete(dependencyAtom);
 

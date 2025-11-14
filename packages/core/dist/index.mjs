@@ -1,226 +1,233 @@
-const D = (e, n) => n.value, C = (e, n) => n;
-function p(e, n, o) {
+const R = (e, r) => r.value, C = (e, r) => r;
+function w(e, r, s) {
   return {
     type: "mutable",
     initialValue: e,
-    read: D,
-    write: n ?? C,
-    onObserve: o == null ? void 0 : o.onObserve,
-    storeLabel: o == null ? void 0 : o.storeLabel
+    read: R,
+    write: r ?? C,
+    onObserve: s == null ? void 0 : s.onObserve,
+    storeLabel: s == null ? void 0 : s.storeLabel
   };
 }
-function S(e, n, o) {
+function S(e, r, s) {
   return {
     type: "derived",
     read: e,
-    write: n,
-    onObserve: o == null ? void 0 : o.onObserve,
-    storeLabel: o == null ? void 0 : o.storeLabel
+    write: r,
+    onObserve: s == null ? void 0 : s.onObserve,
+    storeLabel: s == null ? void 0 : s.storeLabel
   };
 }
-const y = (e) => ({
+function k(e) {
+  return {
+    type: "observer",
+    // Make sure to ignore return value of `read`.
+    read: (...r) => {
+      e(...r);
+    }
+  };
+}
+const P = (e) => ({
   type: "callback",
   write: e
-}), M = (e) => {
+}), G = (e) => {
   if (e === "mutable")
-    return p;
+    return w;
   if (e === "derived")
     return S;
+  if (e === "observer")
+    return k;
   if (e === "callback")
-    return y;
+    return P;
   throw new Error(`Invalid atom type: ${e}`);
-}, k = (e) => e.type === "mutable", P = (e) => e.type === "derived", F = (e) => e.type === "callback", Y = (e) => "read" in e, T = (e) => "write" in e;
+}, N = (e) => e.type === "mutable", T = (e) => e.type === "derived", U = (e) => e.type === "observer", y = (e) => T(e) || U(e), Q = (e) => e.type === "callback", W = (e) => "read" in e, g = (e) => "write" in e;
 var l = /* @__PURE__ */ ((e) => (e.FRESH = "fresh", e.STALE = "stale", e.PENDING = "pending", e))(l || {});
-const O = (e) => {
-  let n = null;
-  const o = /* @__PURE__ */ new Set(), c = () => Promise.resolve().then(async () => {
-    await e(o), o.clear(), n = null;
+const h = (e) => {
+  let r = null;
+  const s = /* @__PURE__ */ new Set(), d = () => Promise.resolve().then(async () => {
+    await e(s), s.clear(), r = null;
   });
   return {
-    add: (d) => {
-      o.add(d), n || (n = c());
+    add: (i) => {
+      s.add(i), r || (r = d());
     },
-    delete: (d) => {
-      o.delete(d);
+    delete: (i) => {
+      s.delete(i);
     },
-    has(d) {
-      return o.has(d);
+    has(i) {
+      return s.has(i);
     },
-    microtaskPromise: n
+    microtaskPromise: r
   };
-}, U = Symbol("atomValueNotYetCalculcated"), I = (e) => k(e) ? {
+}, I = Symbol("atomValueNotYetCalculcated"), H = (e) => N(e) ? {
   value: e.initialValue,
   dependencies: void 0,
-  derivers: void 0,
+  dependents: void 0,
   status: l.FRESH,
   isObserved: !1,
   onUnobserve: void 0
 } : {
-  value: U,
+  value: I,
   dependencies: void 0,
-  derivers: void 0,
+  dependents: void 0,
   status: l.STALE,
   isObserved: !1,
   onUnobserve: void 0
-}, u = (e, n) => {
-  const o = n.get(e);
-  if (o)
-    return o;
-  const c = I(e);
-  return n.set(e, c), c;
-}, g = (e, n) => {
-  e.derivers || (e.derivers = /* @__PURE__ */ new Set()), e.derivers.add(n);
-}, V = (e, n) => {
-  var o, c;
-  (o = e.derivers) == null || o.delete(n), !((c = e.derivers) != null && c.size) && (e.derivers = void 0);
-}, H = (e, n) => {
-  e.dependencies || (e.dependencies = /* @__PURE__ */ new Set()), e.dependencies.add(n);
-}, G = () => {
+}, u = (e, r) => {
+  const s = r.get(e);
+  if (s)
+    return s;
+  const d = H(e);
+  return r.set(e, d), d;
+}, M = (e, r) => {
+  e.dependents || (e.dependents = /* @__PURE__ */ new Set()), e.dependents.add(r);
+}, F = (e, r) => {
+  var s, d;
+  (s = e.dependents) == null || s.delete(r), !((d = e.dependents) != null && d.size) && (e.dependents = void 0);
+}, Y = (e, r) => {
+  e.dependencies || (e.dependencies = /* @__PURE__ */ new Set()), e.dependencies.add(r);
+}, z = () => {
   const e = /* @__PURE__ */ new WeakMap();
   window.showState = () => console.log(e);
-  const n = O(
-    (r) => {
-      if (!r.size) {
+  const r = h(
+    (t) => {
+      if (!t.size) {
         console.warn("SANITY CHECK IS ACTUALLY NECESSARY??");
         return;
       }
       const a = performance.now();
-      r.forEach((s) => {
-        u(s, e).isObserved && m(s);
+      t.forEach((o) => {
+        u(o, e).isObserved && m(o);
       }), console.log("RECALCULATED", performance.now() - a);
     }
-  ), o = O(
-    async (r) => {
-      await n.microtaskPromise;
-      const a = (s) => {
-        var A, E;
-        const t = u(s, e);
-        Array.from(t.derivers ?? []).some(
-          (b) => u(b, e).isObserved
-        ) || (console.log("UNOBSERVE", s.storeLabel, t.derivers), (A = t.onUnobserve) == null || A.call(t), t.isObserved = !1, (E = t.dependencies) == null || E.forEach(a));
-      };
-      r.forEach(a);
-    }
-  ), c = (r, a) => {
-    var t;
-    const s = u(r, e);
-    if (s.status !== l.STALE && (s.status = a), n.has(r)) {
-      Array.from(s.derivers ?? []).some(
-        (i) => !n.has(i)
+  ), s = h(async (t) => {
+    await r.microtaskPromise;
+    const a = (o) => {
+      var A, p;
+      const n = u(o, e);
+      Array.from(n.dependents ?? []).some(
+        (b) => u(b, e).isObserved
+      ) || (console.log("UNOBSERVE atom", o.storeLabel, n.dependents), (A = n.onUnobserve) == null || A.call(n), n.isObserved = !1, (p = n.dependencies) == null || p.forEach(a));
+    };
+    t.forEach(a);
+  }), d = (t, a) => {
+    var n;
+    const o = u(t, e);
+    if (o.status !== l.STALE && (o.status = a), r.has(t)) {
+      Array.from(o.dependents ?? []).some(
+        (c) => !r.has(c)
       ) && console.warn(
-        "THIS SHOULD NOT HAPPEN! DERIVERS NOT CORRECTLY MARKED FOR RECALCULATION",
-        r.storeLabel
+        "THIS SHOULD NOT HAPPEN! DEPENDENTS NOT CORRECTLY MARKED FOR RECALCULATION",
+        t.storeLabel
       );
       return;
     }
-    n.add(r), (t = s.derivers) == null || t.forEach(
-      (i) => c(i, l.PENDING)
+    r.add(t), (n = o.dependents) == null || n.forEach(
+      (c) => d(c, l.PENDING)
     );
-  }, d = (r, a) => {
-    var t;
-    const s = u(r, e);
-    s.status = l.FRESH, s.value !== a && ((t = s.derivers) == null || t.forEach(
-      (i) => c(i, l.STALE)
-    ), s.value = a, s.derivers = void 0);
-  }, h = (r) => {
-    var t;
-    const a = u(r, e);
-    if (a.isObserved || ((t = a.dependencies) == null || t.forEach(h), a.isObserved = !0, !r.onObserve))
+  }, i = (t, a) => {
+    var n;
+    const o = u(t, e);
+    o.status = l.FRESH, o.value !== a && ((n = o.dependents) == null || n.forEach(
+      (c) => d(c, l.STALE)
+    ), o.value = a, o.dependents = void 0);
+  }, E = (t) => {
+    var n;
+    const a = u(t, e);
+    if (a.isObserved || ((n = a.dependencies) == null || n.forEach(E), a.isObserved = !0, !t.onObserve))
       return;
-    const s = T(r) ? r.onObserve({
-      peek: v.peekAtom,
+    const o = g(t) ? t.onObserve({
+      peek: v.peekAtomValue,
       // Consider allowing to set any atom within onObserve.
-      setSelf: (i) => {
-        v.setAtom(r, i);
+      setSelf: (c) => {
+        v.setAtomValue(t, c);
       }
-    }) : r.onObserve({ peek: v.peekAtom });
-    s && (a.onUnobserve = s);
-  }, f = (r, a, s) => {
+    }) : t.onObserve({ peek: v.peekAtomValue });
+    o && (a.onUnobserve = o);
+  }, f = (t, a, o) => {
     if (!a)
       return;
-    (s ? a.difference(s) : a).forEach((i) => {
-      const A = u(i, e);
-      V(A, r), o.add(i);
+    (o ? a.difference(o) : a).forEach((c) => {
+      const A = u(c, e);
+      F(A, t), s.add(c);
     });
-  }, m = (r, a) => {
-    var E;
-    const s = performance.now(), t = u(r, e);
-    if (a && h(r), t.status === l.FRESH)
-      return t.value;
-    if (!P(r))
+  }, m = (t, a) => {
+    var p;
+    const o = performance.now(), n = u(t, e);
+    if (a && E(t), n.status === l.FRESH)
+      return n.value;
+    if (!y(t))
       throw new Error(
-        "Somehow MutableAtom has been marked as not fresh! This shouldn`t be possible!"
+        `Somehow MutableAtom has been marked as not fresh! This shouldn't be possible! - ${t.storeLabel}`
       );
-    if (t.status === l.PENDING && ((E = t.dependencies) == null || E.forEach((b) => m(b)), performance.now() - s > 1 && console.log("PENDING", performance.now() - s), t.status === l.PENDING))
-      return t.status = l.FRESH, t.value;
-    const i = t.dependencies;
-    t.dependencies = void 0;
-    const A = r.read(
+    if (n.status === l.PENDING && ((p = n.dependencies) == null || p.forEach((b) => m(b)), performance.now() - o > 1 && console.log("PENDING", performance.now() - o), n.status === l.PENDING))
+      return n.status = l.FRESH, n.value;
+    const c = n.dependencies;
+    n.dependencies = void 0;
+    const A = t.read(
       {
         get: (b) => {
-          const N = m(b, t.isObserved), R = u(b, e);
-          return H(t, b), g(R, r), N;
+          const D = m(b, n.isObserved), V = u(b, e);
+          return Y(n, b), M(V, t), D;
         },
-        peek: v.peekAtom,
-        // TODO Expose scheduleSet just for effect atom? (not introduced yet)
+        peek: v.peekAtomValue,
+        // TODO Expose scheduleSet just for observer atom? (not introduced yet)
         scheduleSet: L
       },
-      t
+      n
     );
-    return f(r, i, t.dependencies), d(r, A), A;
-  }, w = (r, a) => {
-    const s = r.write({ peek: v.peekAtom, set: v.setAtom }, a);
-    return k(r) && d(r, s), s;
-  }, L = (r, a) => {
-    Promise.resolve().then(() => w(r, a));
+    return f(t, c, n.dependencies), i(t, A), A;
+  }, O = (t, a) => {
+    const o = t.write({ peek: v.peekAtomValue, set: v.setAtomValue }, a);
+    return N(t) && i(t, o), o;
+  }, L = (t, a) => {
+    Promise.resolve().then(() => O(t, a));
   }, v = {
-    peekAtom: (r) => m(r),
-    setAtom: w,
-    observeAtom(r, a) {
-      const s = S(
-        ({ get: t }) => {
-          const i = t(r);
-          a(i);
-        },
-        void 0,
-        {
-          storeLabel: `observerOf[${r.storeLabel}]`
-        }
-      );
-      return m(s, !0), () => {
-        o.add(s), v.resetAtom(s);
+    peekAtomValue: (t) => m(t),
+    setAtomValue: O,
+    getAtomState: (t) => u(t, e),
+    observeAtomValue(t, a) {
+      const o = k(({ get: n }) => {
+        const c = n(t);
+        a(c);
+      });
+      return m(o, !0), () => {
+        s.add(o);
       };
     },
-    resetAtom(r) {
-      console.log("RESET ATOM", r.storeLabel);
+    resetAtomState(t) {
+      console.log("RESET ATOM", t.storeLabel);
     }
   };
   return v;
-}, Q = (e) => {
-  const n = p({ state: "pending" }), o = S(({ get: c, scheduleSet: d }) => (c(e).then((f) => {
-    d(n, {
+}, K = (e) => {
+  const r = w({ state: "pending" }), s = S(({ get: d, scheduleSet: i }) => (d(e).then((f) => {
+    i(r, {
       state: "resolved",
       value: f
     });
   }).catch((f) => {
-    d(n, {
+    i(r, {
       state: "rejected",
       error: f
     });
   }), null));
-  return S(({ get: c }) => (c(o), c(n)));
+  return S(({ get: d }) => (d(s), d(r)));
 };
 export {
   l as AtomStateStatus,
-  M as createAtom,
-  y as createCallbackAtom,
+  G as createAtom,
+  P as createCallbackAtom,
   S as createDerivedAtom,
-  p as createMutableAtom,
-  G as createStore,
-  Q as depromisifyAtom,
-  F as isCallbackAtom,
-  P as isDerivedAtom,
-  k as isMutableAtom,
-  Y as isReadableAtom,
-  T as isWritableAtom
+  w as createMutableAtom,
+  k as createObserverAtom,
+  z as createStore,
+  K as depromisifyAtom,
+  Q as isCallbackAtom,
+  y as isDependentAtom,
+  T as isDerivedAtom,
+  N as isMutableAtom,
+  U as isObserverAtom,
+  W as isReadableAtom,
+  g as isWritableAtom
 };

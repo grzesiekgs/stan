@@ -1,36 +1,36 @@
-import { useMemo as c, useSyncExternalStore as a, useCallback as s } from "react";
-import { createStore as i, isWritableAtom as u, isReadableAtom as l } from "@stan/core";
-const o = i(), m = (e) => [
-  (t) => o.observeAtom(e, t),
-  () => o.peekAtom(e)
-], d = (e) => {
-  const [t, r] = c(
+import { useMemo as a, useSyncExternalStore as c, useCallback as n } from "react";
+import { createStore as l, isWritableAtom as s, isReadableAtom as i } from "@stan/core";
+const o = l(), m = (e) => [
+  (t) => o.observeAtomValue(e, t),
+  () => o.peekAtomValue(e)
+], p = (e) => {
+  const [t, r] = a(
     () => m(e),
     [e]
   );
-  return a(t, r);
-}, f = (e) => {
-  if (!u(e))
+  return c(t, r);
+}, d = (e) => {
+  if (!s(e))
     throw new Error("Tried to write non-writable atom");
-  return s(
-    (t) => o.setAtom(e, t),
+  return n(
+    (t) => o.setAtomValue(e, t),
     [e]
   );
 };
-function k(e) {
-  if (!u(e))
+function f(e) {
+  if (!s(e))
     throw new Error("Tried to write non-writable atom");
-  return s(
+  return n(
     (t) => {
-      const r = l(e) ? o.peekAtom(e) : void 0, n = t(r);
-      return o.setAtom(e, n);
+      const r = i(e) ? o.peekAtomValue(e) : void 0, u = t(r);
+      return o.setAtomValue(e, u);
     },
     [e]
   );
 }
 export {
   o as testStore,
-  d as useAtomValue,
-  k as useSetAtomCallback,
-  f as useSetAtomValue
+  p as useAtomValue,
+  f as useSetAtomCallback,
+  d as useSetAtomValue
 };

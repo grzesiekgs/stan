@@ -17,11 +17,11 @@ type SyncExternalStoreArgs<Value> = [SubscribeToStore, GetStoreSnapshot<Value>];
 const buildSyncExternalStoreArgs = <Value>(
   readableAtom: ReadableAtom<Value>
 ): SyncExternalStoreArgs<Value> => [
-  (callback) => testStore.observeAtom(readableAtom, callback),
-  () => testStore.peekAtom(readableAtom),
+  (callback) => testStore.observeAtomValue(readableAtom, callback),
+  () => testStore.peekAtomValue(readableAtom),
 ];
 
-export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value, any>): Value => {
+export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): Value => {
   const [subscribe, getSnapshot] = useMemo(
     () => buildSyncExternalStoreArgs(readableAtom),
     [readableAtom]
@@ -36,12 +36,12 @@ export type SetAtomValue<Update, Result> = (update: Update) => Result;
 export const useSetAtomValue = <Update, Result>(
   writableAtom: WritableAtom<Update, Result>
 ): SetAtomValue<Update, Result> => {
-  if (!isWritableAtom(writableAtom)) {
+  if (!isWritableAtom<Update, Result>(writableAtom)) {
     throw new Error('Tried to write non-writable atom');
   }
 
   return useCallback<SetAtomValue<Update, Result>>(
-    (update) => testStore.setAtom<Update, Result>(writableAtom, update),
+    (update) => testStore.setAtomValue(writableAtom, update),
     [writableAtom]
   );
 };
@@ -58,7 +58,7 @@ export function useSetAtomCallback<Update, Result>(
   writableAtom: WritableAtom<Update, Result>
 ): CallbackSetAtom<Update, Result, undefined>;
 export function useSetAtomCallback<Update, Result, Value>(
-  writableAtom: WritableAtom<Update, Result> | (WritableAtom<Update, Result> & ReadableAtom<Value>)
+  writableAtom: WritableAtom<Update, Result>
 ): CallbackSetAtom<Update, Result, Value | undefined> {
   if (!isWritableAtom(writableAtom)) {
     throw new Error('Tried to write non-writable atom');
@@ -67,11 +67,11 @@ export function useSetAtomCallback<Update, Result, Value>(
   return useCallback<CallbackSetAtom<Update, Result, Value | undefined>>(
     (updateCallback) => {
       const updateCallbackValue = isReadableAtom<Value>(writableAtom)
-        ? testStore.peekAtom(writableAtom)
+        ? testStore.peekAtomValue(writableAtom)
         : undefined;
       const updateValue = updateCallback(updateCallbackValue);
 
-      return testStore.setAtom<Update, Result>(writableAtom, updateValue);
+      return testStore.setAtomValue<Update, Result>(writableAtom, updateValue);
     },
     [writableAtom]
   );
