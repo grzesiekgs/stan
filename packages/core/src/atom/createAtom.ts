@@ -63,9 +63,11 @@ export function createDerivedAtom<Value, UpdateValue = never, UpdateResult = Upd
 export function createObserverAtom(read: ReadAtom<void>): ObserverAtom {
   return {
     type: 'observer',
-    // Make sure to ignore return value of `read`.
-    read: (...args) => {
-      read(...args);
+    read: (readArgs, lastValue) => {
+      // Make sure to ignore return value of `read` as observer should never have it's own value.
+      read(readArgs);
+
+      return lastValue;
     },
   };
 }

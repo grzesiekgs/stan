@@ -1,5 +1,5 @@
 import { isMutableAtom } from '../atom/utils';
-import { AtomValueNotYetCalculatedSymbol } from '../symbols';
+import { EmptyAtomValueSymbol } from '../symbols';
 import {
   AtomState,
   AtomToStateMap,
@@ -26,7 +26,7 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<
   }
   // Just to highlight that initialAtomState satisfies DerivedAtomState type.
   const initialAtomState: InitialAtomState = {
-    value: AtomValueNotYetCalculatedSymbol,
+    value: EmptyAtomValueSymbol,
     dependencies: undefined,
     dependents: undefined,
     status: AtomStateStatus.STALE,

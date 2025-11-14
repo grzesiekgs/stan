@@ -5,26 +5,27 @@ import {
   createStore,
   isWritableAtom,
   isReadableAtom,
+  Store,
 } from '@stan/core';
-
-// TODO Provide store via react context.
-export const testStore = createStore();
+import { useStore } from './context';
 
 type SubscribeToStore = (callback: VoidFunction) => VoidFunction;
 type GetStoreSnapshot<Value> = () => Value;
 type SyncExternalStoreArgs<Value> = [SubscribeToStore, GetStoreSnapshot<Value>];
 
 const buildSyncExternalStoreArgs = <Value>(
+  store: Store,
   readableAtom: ReadableAtom<Value>
 ): SyncExternalStoreArgs<Value> => [
-  (callback) => testStore.observeAtomValue(readableAtom, callback),
-  () => testStore.peekAtomValue(readableAtom),
+  (callback) => store.observeAtomValue(readableAtom, callback),
+  () => store.peekAtomValue(readableAtom),
 ];
 
 export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): Value => {
+  const store = useStore();
   const [subscribe, getSnapshot] = useMemo(
-    () => buildSyncExternalStoreArgs(readableAtom),
-    [readableAtom]
+    () => buildSyncExternalStoreArgs(store, readableAtom),
+    [store, readableAtom]
   );
   const value = useSyncExternalStore(subscribe, getSnapshot);
 
@@ -40,9 +41,11 @@ export const useSetAtomValue = <Update, Result>(
     throw new Error('Tried to write non-writable atom');
   }
 
+  const store = useStore();
+
   return useCallback<SetAtomValue<Update, Result>>(
-    (update) => testStore.setAtomValue(writableAtom, update),
-    [writableAtom]
+    (update) => store.setAtomValue(writableAtom, update),
+    [store, writableAtom]
   );
 };
 
@@ -64,15 +67,17 @@ export function useSetAtomCallback<Update, Result, Value>(
     throw new Error('Tried to write non-writable atom');
   }
 
+  const store = useStore();
+
   return useCallback<CallbackSetAtom<Update, Result, Value | undefined>>(
     (updateCallback) => {
       const updateCallbackValue = isReadableAtom<Value>(writableAtom)
-        ? testStore.peekAtomValue(writableAtom)
+        ? store.peekAtomValue(writableAtom)
         : undefined;
       const updateValue = updateCallback(updateCallbackValue);
 
-      return testStore.setAtomValue<Update, Result>(writableAtom, updateValue);
+      return store.setAtomValue<Update, Result>(writableAtom, updateValue);
     },
-    [writableAtom]
+    [store, writableAtom]
   );
 }

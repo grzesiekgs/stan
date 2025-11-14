@@ -1,3 +1,3 @@
-export const AtomValueNotYetCalculatedSymbol = Symbol('atomValueNotYetCalculcated');
+export const EmptyAtomValueSymbol = Symbol('emptyAtomValue');
 
-export type AtomValueNotYetCalculatedSymbolType = typeof AtomValueNotYetCalculatedSymbol;
+export type EmptyAtomValueSymbolType = typeof EmptyAtomValueSymbol;

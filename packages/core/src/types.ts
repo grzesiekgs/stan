@@ -1,9 +1,14 @@
+import { EmptyAtomValueSymbolType } from './symbols';
+
 export type AtomReadArgs = {
   get: StoreGetAtomValue;
   peek: StoreGetAtomValue;
   scheduleSet: ScheduleWriteAtomValue;
 };
-export type ReadAtom<Value> = (args: AtomReadArgs, atomState: AtomState<Value>) => Value;
+export type ReadAtom<Value> = (
+  args: AtomReadArgs,
+  lastValue: Value | EmptyAtomValueSymbolType
+) => Value;
 
 export type AtomWriteArgs = { peek: StoreGetAtomValue; set: StoreSetAtomValue };
 export type WriteAtom<UpdateValue, UpdateResult = UpdateValue> = (
@@ -56,15 +61,13 @@ export type DerivedAtom<Value, UpdateValue = never, UpdateResult = UpdateValue> 
 ] extends [never]
   ? ReadableAtom<Value, 'derived'>
   : ReadableAtom<Value, 'derived'> & WritableAtom<UpdateValue, UpdateResult, 'derived'>;
-export type ObserverAtom = ReadableAtom<void, 'observer'>;
+export type ObserverAtom = ReadableAtom<EmptyAtomValueSymbolType, 'observer'>;
 export type CallbackAtom<UpdateValue, UpdateResult = void> = WritableAtom<
   UpdateValue,
   UpdateResult,
   'callback'
 >;
-export type DependentAtom<Value = any> = [Value] extends [never]
-  ? ObserverAtom
-  : DerivedAtom<Value, unknown, unknown>;
+export type DependentAtom<Value = any> = ObserverAtom | DerivedAtom<Value, unknown, unknown>;
 
 export type DependencyAtom<Value> = ReadableAtom<Value>;
 
@@ -104,6 +107,7 @@ export type BaseAtomState = {
   // If such case will be determined, then consider wrapping each DerivedAtom in WeakRef, which can be deref'ed.
   dependencies: Set<DependencyAtom<unknown>> | undefined;
   dependents: Set<DependentAtom<unknown>> | undefined;
+  status: AtomStateStatus;
 };
 
 export enum AtomStateStatus {
@@ -113,7 +117,7 @@ export enum AtomStateStatus {
 }
 export type InitialAtomState = BaseAtomState & {
   status: AtomStateStatus.STALE;
-  value: symbol; // AtomValueNotYetCalculatedSymbolType;
+  value: EmptyAtomValueSymbolType; // AtomValueNotYetCalculatedSymbolType;
 };
 
 export type DependentAtomState<Value> = BaseAtomState &
@@ -164,11 +168,8 @@ export type AtomValueSetter<UpdateValue, UpdateResult = void> = (
   updateValue: UpdateValue
 ) => UpdateResult;
 
-
 export type CreateReadableAtomOptions<Update> = {
   storeLabel?: string;
   // TODO Add onMount? Look ReadableAtom/WritableAtom for more details.
-  onObserve?: [Update] extends [never] 
-    ? AtomOnObserve<never>
-    : AtomOnObserve<Update>;
+  onObserve?: [Update] extends [never] ? AtomOnObserve<never> : AtomOnObserve<Update>;
 };

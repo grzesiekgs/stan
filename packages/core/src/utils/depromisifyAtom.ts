@@ -1,4 +1,4 @@
-import { createDerivedAtom, createMutableAtom } from '../atom/createAtom';
+import { createDerivedAtom, createMutableAtom, createObserverAtom } from '../atom/createAtom';
 import { DerivedAtom, ReadableAtom } from '../types';
 
 export type DepromisifyState = 'pending' | 'resolved' | 'rejected';
@@ -29,24 +29,26 @@ export type Depromisify<PromiseValue, PromiseError = Error> =
 export const depromisifyAtom = <PromiseValue, PromiseError>(
   promiseAtom: ReadableAtom<Promise<PromiseValue>>
 ): DerivedAtom<Depromisify<PromiseValue, PromiseError>> => {
-  const stateAtom = createMutableAtom<Depromisify<PromiseValue, PromiseError>>({ state: 'pending' });
-  const promiseResolverAtom = createDerivedAtom<null>(({ get, scheduleSet }) => {
+  const stateAtom = createMutableAtom<Depromisify<PromiseValue, PromiseError>>({
+    state: 'pending',
+  });
+  const promiseResolverAtom = createObserverAtom(({ get, scheduleSet }) => {
     const promise = get(promiseAtom);
 
-    promise.then((value) => {
-      scheduleSet(stateAtom, {
-        state: 'resolved',
-        value,
+    promise
+      .then((value) => {
+        scheduleSet(stateAtom, {
+          state: 'resolved',
+          value,
+        });
+      })
+      .catch((error) => {
+        scheduleSet(stateAtom, {
+          state: 'rejected',
+          error,
+        });
       });
-    }).catch((error) => {
-      scheduleSet(stateAtom, {
-        state: 'rejected',
-        error,
-      });
-    });
-
-    return null;
-  })
+  });
 
   return createDerivedAtom<Depromisify<PromiseValue, PromiseError>>(({ get }) => {
     // Read resolver atom so it will read the promise and update stateAtom.

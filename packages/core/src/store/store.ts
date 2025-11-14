@@ -1,8 +1,8 @@
 import { createObserverAtom } from '../atom/createAtom';
 import { isDependentAtom, isMutableAtom, isWritableAtom } from '../atom/utils';
+import { EmptyAtomValueSymbolType } from '../symbols';
 import {
   AtomToStateMap,
-  DerivedAtom,
   ReadableAtom,
   Store,
   ScheduleWriteAtomValue,
@@ -10,6 +10,7 @@ import {
   WriteAtomValue,
   AtomStateStatus,
   DependentAtom,
+  DependencyAtom,
 } from '../types';
 import { createMicrotaskQueue } from './microtaskQueue';
 import {
@@ -23,7 +24,7 @@ export const createStore = (): Store => {
   const atomToStateMap: AtomToStateMap = new WeakMap();
   (window as any).showState = () => console.log(atomToStateMap);
 
-  const recalculateDependentsQueue = createMicrotaskQueue<DerivedAtom<any, any, any>>(
+  const recalculateDependentsQueue = createMicrotaskQueue<DependentAtom<any>>(
     (dependentsToRecalculate) => {
       if (!dependentsToRecalculate.size) {
         console.warn('SANITY CHECK IS ACTUALLY NECESSARY??');
@@ -73,10 +74,10 @@ export const createStore = (): Store => {
   const unobserveAtomQueue = createMicrotaskQueue<ReadableAtom<any>>(async (atomsToUnobserve) => {
     await recalculateDependentsQueue.microtaskPromise;
 
-    const possiblyUnobserveAtom = (atom: ReadableAtom<unknown>) => {
+    const possiblyUnobserveAtom = (atom: ReadableAtom<any>) => {
       const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
       const hasObservedDependents = Array.from(atomState.dependents ?? []).some(
-        (dependentAtom) => getAtomStateFromStateMap(dependentAtom, atomToStateMap).isObserved
+        (dependentAtom) => getAtomStateFromStateMap(dependentAtom as any, atomToStateMap).isObserved
       );
       // Atom is still observed by other atom.
       if (hasObservedDependents) {
@@ -91,10 +92,7 @@ export const createStore = (): Store => {
     atomsToUnobserve.forEach(possiblyUnobserveAtom);
   });
 
-  const markDependentAtomForRecalculation = (
-    atom: DependentAtom<unknown>,
-    status: AtomStateStatus
-  ) => {
+  const markDependentAtomForRecalculation = (atom: DependentAtom<any>, status: AtomStateStatus) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // Atom A could be marked as stale, but could be also deriver of atom B which is being marked as stale,
     // and this could mark atom A as pending [look at end of this function].
@@ -176,9 +174,9 @@ export const createStore = (): Store => {
   };
 
   const unlinkAtomPreviousDependencies = (
-    atom: DerivedAtom<any, any, any>,
-    previousDependencies?: Set<ReadableAtom<any, any>>,
-    currentDependencies?: Set<ReadableAtom<any, any>>
+    atom: DependentAtom<any>,
+    previousDependencies?: Set<DependencyAtom<any>>,
+    currentDependencies?: Set<DependentAtom<any>>
   ) => {
     if (!previousDependencies) {
       return;
@@ -188,7 +186,7 @@ export const createStore = (): Store => {
       ? previousDependencies.difference(currentDependencies)
       : previousDependencies;
 
-    dependenciesToUnobserve.forEach((dependencyAtom: ReadableAtom<unknown>) => {
+    dependenciesToUnobserve.forEach((dependencyAtom: ReadableAtom<any>) => {
       const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
 
       removeAtomDependent(dependencyAtomState, atom);
@@ -251,7 +249,7 @@ export const createStore = (): Store => {
         // TODO Expose scheduleSet just for observer atom? (not introduced yet)
         scheduleSet,
       },
-      atomState
+      atomState.value
     );
 
     unlinkAtomPreviousDependencies(atom, previousDependencies, atomState.dependencies);
