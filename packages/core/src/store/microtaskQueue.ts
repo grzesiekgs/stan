@@ -20,6 +20,7 @@ export type MicrotaskStats = {
     counter: number;
   };
   items: {
+    rejected: number;
     atStart: number;
     atEnd: number;
   };
@@ -48,6 +49,7 @@ export class Microtask<Item> {
         counter: counter++,
       },
       items: {
+        rejected: 0,
         atStart: 0,
         atEnd: 0,
       },
@@ -93,15 +95,19 @@ export class Microtask<Item> {
   };
   // Note that currently it's allowed to add item during microtask processing. Not sure is this legit.
   // My understanding is that it could happen only when called from within microtask processing, which "extends" current microtask.
-  public add = (item: Item): void => {
+  public add = (item: Item): boolean => {
+    if (this.itemsSet.has(item)) {
+      this.stats.items.rejected++;
+      return false;
+    }
+
     if (this.status === 'finished') {
       throw new Error('Tried to add item to finished microtask');
     }
 
     this.itemsSet.add(item);
-  };
-  public has = (item: Item): boolean => {
-    return this.itemsSet.has(item);
+
+    return true;
   };
   public getStats = (): MicrotaskStats => {
     return this.stats;
@@ -118,10 +124,6 @@ export const createMicrotaskQueue = <Item>(
   const api: MicrotaskQueue<Item> = {
     pushItem: (item) => {
       if (latestMicrotask) {
-        if (latestMicrotask.has(item)) {
-          return latestMicrotask.id;
-        }
-
         latestMicrotask.add(item);
 
         return latestMicrotask.id;

@@ -59,13 +59,20 @@ export const createStore = (): Store => {
       //     orderedDependentsToRecalculate.push(deriverAtom);
       //   }
       // });
+      const alreadyProcessed = new Set<DependentAtom<any>>();
       // console.log('SORTING', performance.now() - start, splice, push);
       dependentsToRecalculate.forEach((deriverAtom) => {
+        if (alreadyProcessed.has(deriverAtom)) {
+          console.warn('REPROCESSING DERIVER', deriverAtom.storeLabel);
+        }
+
         const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
 
         if (deriverAtomState.isObserved) {
           readAtomValue(deriverAtom, createAtomReadCycle(false));
         }
+
+        alreadyProcessed.add(deriverAtom);
       });
     }
   );
@@ -107,19 +114,19 @@ export const createStore = (): Store => {
     }
     // console.log('MARK DEPENDENT FOR RECALCULATION', atomState.dependents?.size, atom);
 
-    // atomState.dependents?.forEach((dependentAtom) =>
-    //   markDependentAtomForRecalculation(dependentAtom, AtomStateStatus.PENDING)
-    // );
+    atomState.dependents?.forEach((dependentAtom) =>
+      markDependentAtomForRecalculation(dependentAtom, AtomStateStatus.PENDING)
+    );
   };
 
   const updateAtomValue = <Value>(atom: ReadableAtom<Value>, value: Value): void => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    console.log('UPDATE VALUE', {
-      label: atom.storeLabel,
-      value,
-      currentValue: atomState.value,
-      isEqual: atomState.value === value,
-    });
+    // console.log('UPDATE VALUE', {
+    //   label: atom.storeLabel,
+    //   value,
+    //   currentValue: atomState.value,
+    //   isEqual: atomState.value === value,
+    // });
     atomState.status = AtomStateStatus.FRESH;
     // Skip update if value did not change.
     if (atomState.value === value) {
