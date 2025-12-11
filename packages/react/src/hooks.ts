@@ -1,12 +1,5 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import {
-  ReadableAtom,
-  WritableAtom,
-  createStore,
-  isWritableAtom,
-  isReadableAtom,
-  Store,
-} from '@stan/core';
+import { ReadableAtom, WritableAtom, isWritableAtom, isReadableAtom, Store } from '@stan/core';
 import { useStore } from './context';
 
 type SubscribeToStore = (callback: VoidFunction) => VoidFunction;
@@ -22,6 +15,10 @@ const buildSyncExternalStoreArgs = <Value>(
 ];
 
 export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): Value => {
+  if (!isReadableAtom<Value>(readableAtom)) {
+    throw new Error('Tried to read non-readable atom');
+  }
+
   const store = useStore();
   const [subscribe, getSnapshot] = useMemo(
     () => buildSyncExternalStoreArgs(store, readableAtom),

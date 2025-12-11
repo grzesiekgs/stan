@@ -1,8 +1,9 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { FC } from 'react';
 import { createDerivedAtom, createMutableAtom } from '@stan/core';
 import { useSetAtomCallback, useSetAtomValue } from '@stan/react';
-import { useRenderCount } from './useRenderCount';
-import { PrintAtom } from './PrintAtom';
+import { useRenderCount } from '../../hooks/useRenderCount';
+import { PrintAtom } from '../../components/common/PrintAtom';
 
 const aAtom = createMutableAtom(0);
 const bAtom = createMutableAtom(0);
@@ -61,3 +62,7 @@ export const MoutingTest: FC = () => {
     </div>
   );
 };
+
+export const Route = createFileRoute('/tests/mounting')({
+  component: MoutingTest,
+});

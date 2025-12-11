@@ -84,7 +84,13 @@ export type StoreObserveAtomValue = <Value>(
   observer: ObserveAtomValue<Value>
 ) => VoidFunction;
 
-export type ReadAtomValue = <Value>(atom: ReadableAtom<Value>, observe?: boolean) => Value;
+export type AtomReadCycle = {
+  id: number;
+  chain: Set<ReadableAtom<any>>;
+  observed: boolean;
+};
+
+export type ReadAtomValue = <Value>(atom: ReadableAtom<Value>, readCycle: AtomReadCycle) => Value;
 export type WriteAtomValue = <Update, UpdateResult>(
   atom: WritableAtom<Update, UpdateResult>,
   update: Update
@@ -154,6 +160,7 @@ export type Store = {
   setAtomValue: StoreSetAtomValue;
   resetAtomState: StoreResetAtomState;
   getAtomState: StoreGetAtomState;
+  peekAtomToStateMap: () => AtomToStateMap;
 };
 // Consider setSelf returning result of calling atom.write.
 export type AtomSetSelf<Value> = (value: Value) => void;

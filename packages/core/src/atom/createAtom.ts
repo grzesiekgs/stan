@@ -60,9 +60,13 @@ export function createDerivedAtom<Value, UpdateValue = never, UpdateResult = Upd
     storeLabel: options?.storeLabel,
   } as DerivedAtom<Value, UpdateValue, UpdateResult>;
 }
-export function createObserverAtom(read: ReadAtom<void>): ObserverAtom {
+export function createObserverAtom(
+  read: ReadAtom<void>,
+  options?: CreateReadableAtomOptions<void>
+): ObserverAtom {
   return {
     type: 'observer',
+    storeLabel: options?.storeLabel,
     read: (readArgs, lastValue) => {
       // Make sure to ignore return value of `read` as observer should never have it's own value.
       read(readArgs);

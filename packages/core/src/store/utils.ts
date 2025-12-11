@@ -9,6 +9,8 @@ import {
   ReadableAtom,
   AtomStateStatus,
   DependentAtom,
+  DependencyAtom,
+  AtomReadCycle,
 } from '../types';
 
 export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => {
@@ -80,7 +82,7 @@ export const removeAtomDependent = (
 // Possibly use weak refs?
 export const addAtomDependency = (
   atomState: AtomState<any>,
-  dependencyAtom: ReadableAtom<any>
+  dependencyAtom: DependencyAtom<any>
 ): void => {
   if (!atomState.dependencies) {
     atomState.dependencies = new Set();
@@ -91,7 +93,7 @@ export const addAtomDependency = (
 // Possibly use weak refs?
 export const removeAtomDependency = (
   atomState: AtomState<any>,
-  dependencyAtom: ReadableAtom<any>
+  dependencyAtom: DependencyAtom<any>
 ): void => {
   atomState.dependencies?.delete(dependencyAtom);
 
@@ -101,3 +103,24 @@ export const removeAtomDependency = (
 
   atomState.dependencies = undefined;
 };
+
+export const getDependenciesToUnobserve = (
+  previousDependencies?: Set<DependencyAtom<any>>,
+  currentDependencies?: Set<DependentAtom<any>>
+): Set<DependencyAtom<any>> | undefined => {
+  if (!previousDependencies) {
+    return undefined;
+  }
+
+  if (!currentDependencies) {
+    return previousDependencies;
+  }
+
+  return previousDependencies.difference(currentDependencies);
+};
+
+export const createAtomReadCycle = (observed: boolean): AtomReadCycle => ({
+  id: performance.now(),
+  chain: new Set(),
+  observed,
+});

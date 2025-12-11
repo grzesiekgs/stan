@@ -1,7 +1,9 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { FC } from 'react';
 import { createDerivedAtom, createMutableAtom } from '@stan/core';
 import { useSetAtomCallback } from '@stan/react';
-import { PrintAtom } from './PrintAtom';
+import { PrintAtom } from '../../components/common/PrintAtom';
+
 
 const firstAtom = createMutableAtom(1, undefined, {
   storeLabel: 'first',
@@ -108,7 +110,7 @@ export const ProxyTest: FC = () => {
   return (
     <div className="App">
       {/* <div>first: {first}</div> */}
-      {/* <PrintAtom atom={firstAtom} /> */}
+      <PrintAtom atom={firstAtom} />
       <PrintAtom atom={firstPlusPlusSumAtom} />
       <button onClick={() => setFirstProxy((val) => String(val - 1))}>-</button>
       <button onClick={() => setFirstProxy((val) => String(val + 1))}>+</button>
@@ -124,3 +126,8 @@ export const ProxyTest: FC = () => {
     </div>
   );
 };
+
+
+export const Route = createFileRoute('/tests/proxy')({
+  component: ProxyTest,
+});
