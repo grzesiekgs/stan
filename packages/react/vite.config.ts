@@ -13,5 +13,11 @@ export default defineConfig({
       external: ['react', '@stan/core']
     }
   },
-  plugins: [dts()]
+  plugins: [
+    dts({
+      entryRoot: 'src',
+      outDir: 'dist',
+      rollupTypes: true
+    })
+  ]
 }) 

@@ -1,5 +1,5 @@
 import { createStore, Store } from '@stan/core';
-import { createContext, FC, PropsWithChildren, useContext, useState } from 'react';
+import { createContext, FC, PropsWithChildren, useContext, useEffect, useState } from 'react';
 
 export const StanStoreContext = createContext<Store | null>(null);
 
@@ -16,7 +16,9 @@ export const useStore = () => {
     throw new Error('@stan/react: Store not found. Make sure to initialize StoreProvider.');
   }
 
-  (globalThis as any).stanStore = store;
+  useEffect(() => {
+    (globalThis as { stanStore?: Store }).stanStore = store;
+  }, [store]);
 
   return store;
 };

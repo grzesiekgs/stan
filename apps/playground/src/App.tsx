@@ -1,4 +1,4 @@
-import { StoreProvider } from '../../../packages/react/src/context';
+import { StoreProvider } from '@stan/react';
 import { CyclicDependencyTest } from './testing-scenarios/CyclicDependency';
 // import { DerivedChainTest } from './testing-scenarios/DerivedChainTest';
 // import { MoutingTest } from './testing-scenarios/MountingTest';

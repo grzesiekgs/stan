@@ -1,24 +1,29 @@
 import tseslint from 'typescript-eslint';
 import coreConfig from './configs/eslint/eslint-core.config.js';
 import reactConfig from './configs/eslint/eslint-react.config.js';
-import appConfig from './configs/eslint/eslint-app.config.js';
+
+const coreFiles = ['packages/core/**/*.{ts,tsx}'];
+const reactFiles = [
+  'packages/react/**/*.{ts,tsx}',
+  'apps/**/*.{ts,tsx}',
+];
 
 export default tseslint.config(
-  ...coreConfig,
-  ...reactConfig,
-  ...appConfig,
-  // Define specific rules if needed.
   {
-    files: ['packages/core/**/*.{ts,tsx}'],
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/.turbo/',
+      '**/build/',
+      '**/*.d.ts',
+    ],
   },
-  {
-    files: ['packages/react/**/*.{ts,tsx}'],
-  },
-  {
-    files: ['apps/playground/**/*.{ts,tsx}'],
-  },
-
-  {
-    ignores: ['**/node_modules/', '**/dist/', '**/.turbo/', '**/build/'],
-  }
+  ...coreConfig.map((config) => ({
+    ...config,
+    files: config.files ?? coreFiles,
+  })),
+  ...reactConfig.map((config) => ({
+    ...config,
+    files: config.files ?? reactFiles,
+  })),
 );

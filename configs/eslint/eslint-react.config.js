@@ -1,3 +1,4 @@
+import { fixupPluginRules } from '@eslint/compat';
 import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
@@ -11,7 +12,7 @@ export default tseslint.config(...coreConfig, {
     },
   },
   plugins: {
-    react: reactPlugin,
+    react: fixupPluginRules(reactPlugin),
     'react-hooks': reactHooksPlugin,
   },
   rules: {
@@ -22,7 +23,7 @@ export default tseslint.config(...coreConfig, {
   },
   settings: {
     react: {
-      version: 'detect',
+      version: '19',
     },
   },
 });

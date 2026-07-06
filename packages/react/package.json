@@ -1,20 +1,38 @@
 {
   "name": "@stan/react",
-  "version": "0.0.1",
-  "private": false,
+  "version": "0.1.0",
+  "description": "React bindings for Stan",
+  "license": "MIT",
+  "sideEffects": false,
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/grzesiekgs/stan.git",
+    "directory": "packages/react"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo"
   },
   "peerDependencies": {
     "@stan/core": "workspace:*",
-    "react": "^19.1.0"
+    "react": "^18.2.0 || ^19.0.0"
   },
   "devDependencies": {
     "@stan/core": "workspace:*",
@@ -23,5 +41,8 @@
     "typescript": "5.8.3",
     "vite": "6.3.4",
     "vite-plugin-dts": "4.5.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

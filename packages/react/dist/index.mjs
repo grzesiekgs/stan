@@ -1,6 +1,6 @@
-import ne, { createContext as oe, useContext as ae, useMemo as se, useSyncExternalStore as ue, useCallback as M } from "react";
-import { isWritableAtom as W, isReadableAtom as ce } from "@stan/core";
-var T = { exports: {} }, R = {};
+import ae, { createContext as se, useState as ue, useContext as ce, useEffect as le, useMemo as ie, useSyncExternalStore as fe, use as de, useCallback as M } from "react";
+import { createStore as me, isReadableAtom as W, isWritableAtom as L } from "@stan/core";
+var _ = { exports: {} }, R = {};
 /**
  * @license React
  * react-jsx-runtime.production.js
@@ -11,22 +11,22 @@ var T = { exports: {} }, R = {};
  * LICENSE file in the root directory of this source tree.
  */
 var $;
-function le() {
+function Ee() {
   if ($) return R;
   $ = 1;
   var t = Symbol.for("react.transitional.element"), o = Symbol.for("react.fragment");
-  function c(f, u, l) {
+  function c(f, a, l) {
     var E = null;
-    if (l !== void 0 && (E = "" + l), u.key !== void 0 && (E = "" + u.key), "key" in u) {
+    if (l !== void 0 && (E = "" + l), a.key !== void 0 && (E = "" + a.key), "key" in a) {
       l = {};
-      for (var b in u)
-        b !== "key" && (l[b] = u[b]);
-    } else l = u;
-    return u = l.ref, {
+      for (var b in a)
+        b !== "key" && (l[b] = a[b]);
+    } else l = a;
+    return a = l.ref, {
       $$typeof: t,
       type: f,
       key: E,
-      ref: u !== void 0 ? u : null,
+      ref: a !== void 0 ? a : null,
       props: l
     };
   }
@@ -43,41 +43,41 @@ var v = {};
  * LICENSE file in the root directory of this source tree.
  */
 var F;
-function ie() {
-  return F || (F = 1, process.env.NODE_ENV !== "production" && function() {
+function be() {
+  return F || (F = 1, process.env.NODE_ENV !== "production" && (function() {
     function t(e) {
       if (e == null) return null;
       if (typeof e == "function")
-        return e.$$typeof === ee ? null : e.displayName || e.name || null;
+        return e.$$typeof === te ? null : e.displayName || e.name || null;
       if (typeof e == "string") return e;
       switch (e) {
         case p:
           return "Fragment";
-        case J:
+        case X:
           return "Profiler";
-        case z:
+        case G:
           return "StrictMode";
-        case H:
+        case Q:
           return "Suspense";
-        case Z:
-          return "SuspenseList";
         case K:
+          return "SuspenseList";
+        case re:
           return "Activity";
       }
       if (typeof e == "object")
         switch (typeof e.tag == "number" && console.error(
           "Received an unexpected object in getComponentNameFromType(). This is likely a bug in React. Please file an issue."
         ), e.$$typeof) {
-          case q:
+          case J:
             return "Portal";
-          case X:
+          case H:
             return (e.displayName || "Context") + ".Provider";
-          case G:
-            return (e._context.displayName || "Context") + ".Consumer";
           case B:
+            return (e._context.displayName || "Context") + ".Consumer";
+          case Z:
             var r = e.render;
             return e = e.displayName, e || (e = r.displayName || r.name || "", e = e !== "" ? "ForwardRef(" + e + ")" : "ForwardRef"), e;
-          case Q:
+          case ee:
             return r = e.displayName || null, r !== null ? r : t(e.type) || "Memo";
           case j:
             r = e._payload, e = e._init;
@@ -100,11 +100,11 @@ function ie() {
       }
       if (r) {
         r = console;
-        var n = r.error, a = typeof Symbol == "function" && Symbol.toStringTag && e[Symbol.toStringTag] || e.constructor.name || "Object";
+        var n = r.error, s = typeof Symbol == "function" && Symbol.toStringTag && e[Symbol.toStringTag] || e.constructor.name || "Object";
         return n.call(
           r,
           "The provided key is an unsupported type %s. This value must be coerced to a string before using it here.",
-          a
+          s
         ), o(e);
       }
     }
@@ -119,8 +119,8 @@ function ie() {
         return "<...>";
       }
     }
-    function u() {
-      var e = k.A;
+    function a() {
+      var e = S.A;
       return e === null ? null : e.getOwner();
     }
     function l() {
@@ -145,13 +145,13 @@ function ie() {
         configurable: !0
       });
     }
-    function L() {
+    function q() {
       var e = t(this.type);
       return N[e] || (N[e] = !0, console.error(
         "Accessing element.ref was removed in React 19. ref is now a regular prop. It will be removed from the JSX Element type in a future release."
       )), e = this.props.ref, e !== void 0 ? e : null;
     }
-    function U(e, r, n, a, d, i, A, O) {
+    function z(e, r, n, s, d, i, w, A) {
       return n = i.ref, e = {
         $$typeof: g,
         type: e,
@@ -160,7 +160,7 @@ function ie() {
         _owner: d
       }, (n !== void 0 ? n : null) !== null ? Object.defineProperty(e, "ref", {
         enumerable: !1,
-        get: L
+        get: q
       }) : Object.defineProperty(e, "ref", { enumerable: !1, value: null }), e._store = {}, Object.defineProperty(e._store, "validated", {
         configurable: !1,
         enumerable: !1,
@@ -175,127 +175,134 @@ function ie() {
         configurable: !1,
         enumerable: !1,
         writable: !0,
-        value: A
+        value: w
       }), Object.defineProperty(e, "_debugTask", {
         configurable: !1,
         enumerable: !1,
         writable: !0,
-        value: O
+        value: A
       }), Object.freeze && (Object.freeze(e.props), Object.freeze(e)), e;
     }
-    function x(e, r, n, a, d, i, A, O) {
-      var s = r.children;
-      if (s !== void 0)
-        if (a)
-          if (re(s)) {
-            for (a = 0; a < s.length; a++)
-              h(s[a]);
-            Object.freeze && Object.freeze(s);
+    function x(e, r, n, s, d, i, w, A) {
+      var u = r.children;
+      if (u !== void 0)
+        if (s)
+          if (ne(u)) {
+            for (s = 0; s < u.length; s++)
+              h(u[s]);
+            Object.freeze && Object.freeze(u);
           } else
             console.error(
               "React.jsx: Static children should always be an array. You are likely explicitly calling React.jsxs or React.jsxDEV. Use the Babel transform instead."
             );
-        else h(s);
+        else h(u);
       if (y.call(r, "key")) {
-        s = t(e);
-        var m = Object.keys(r).filter(function(te) {
-          return te !== "key";
+        u = t(e);
+        var m = Object.keys(r).filter(function(oe) {
+          return oe !== "key";
         });
-        a = 0 < m.length ? "{key: someKey, " + m.join(": ..., ") + ": ...}" : "{key: someKey}", I[s + a] || (m = 0 < m.length ? "{" + m.join(": ..., ") + ": ...}" : "{}", console.error(
+        s = 0 < m.length ? "{key: someKey, " + m.join(": ..., ") + ": ...}" : "{key: someKey}", I[u + s] || (m = 0 < m.length ? "{" + m.join(": ..., ") + ": ...}" : "{}", console.error(
           `A props object containing a "key" prop is being spread into JSX:
   let props = %s;
   <%s {...props} />
 React keys must be passed directly to JSX without using spread:
   let props = %s;
   <%s key={someKey} {...props} />`,
-          a,
           s,
+          u,
           m,
-          s
-        ), I[s + a] = !0);
+          u
+        ), I[u + s] = !0);
       }
-      if (s = null, n !== void 0 && (c(n), s = "" + n), E(r) && (c(r.key), s = "" + r.key), "key" in r) {
+      if (u = null, n !== void 0 && (c(n), u = "" + n), E(r) && (c(r.key), u = "" + r.key), "key" in r) {
         n = {};
-        for (var w in r)
-          w !== "key" && (n[w] = r[w]);
+        for (var O in r)
+          O !== "key" && (n[O] = r[O]);
       } else n = r;
-      return s && b(
+      return u && b(
         n,
         typeof e == "function" ? e.displayName || e.name || "Unknown" : e
-      ), U(
+      ), z(
         e,
-        s,
+        u,
         i,
         d,
-        u(),
+        a(),
         n,
-        A,
-        O
+        w,
+        A
       );
     }
     function h(e) {
       typeof e == "object" && e !== null && e.$$typeof === g && e._store && (e._store.validated = 1);
     }
-    var _ = ne, g = Symbol.for("react.transitional.element"), q = Symbol.for("react.portal"), p = Symbol.for("react.fragment"), z = Symbol.for("react.strict_mode"), J = Symbol.for("react.profiler"), G = Symbol.for("react.consumer"), X = Symbol.for("react.context"), B = Symbol.for("react.forward_ref"), H = Symbol.for("react.suspense"), Z = Symbol.for("react.suspense_list"), Q = Symbol.for("react.memo"), j = Symbol.for("react.lazy"), K = Symbol.for("react.activity"), ee = Symbol.for("react.client.reference"), k = _.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, y = Object.prototype.hasOwnProperty, re = Array.isArray, S = console.createTask ? console.createTask : function() {
+    var T = ae, g = Symbol.for("react.transitional.element"), J = Symbol.for("react.portal"), p = Symbol.for("react.fragment"), G = Symbol.for("react.strict_mode"), X = Symbol.for("react.profiler"), B = Symbol.for("react.consumer"), H = Symbol.for("react.context"), Z = Symbol.for("react.forward_ref"), Q = Symbol.for("react.suspense"), K = Symbol.for("react.suspense_list"), ee = Symbol.for("react.memo"), j = Symbol.for("react.lazy"), re = Symbol.for("react.activity"), te = Symbol.for("react.client.reference"), S = T.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, y = Object.prototype.hasOwnProperty, ne = Array.isArray, k = console.createTask ? console.createTask : function() {
       return null;
     };
-    _ = {
+    T = {
       "react-stack-bottom-frame": function(e) {
         return e();
       }
     };
-    var C, N = {}, Y = _["react-stack-bottom-frame"].bind(
-      _,
+    var C, N = {}, Y = T["react-stack-bottom-frame"].bind(
+      T,
       l
-    )(), V = S(f(l)), I = {};
-    v.Fragment = p, v.jsx = function(e, r, n, a, d) {
-      var i = 1e4 > k.recentlyCreatedOwnerStacks++;
+    )(), V = k(f(l)), I = {};
+    v.Fragment = p, v.jsx = function(e, r, n, s, d) {
+      var i = 1e4 > S.recentlyCreatedOwnerStacks++;
       return x(
         e,
         r,
         n,
         !1,
-        a,
+        s,
         d,
         i ? Error("react-stack-top-frame") : Y,
-        i ? S(f(e)) : V
+        i ? k(f(e)) : V
       );
-    }, v.jsxs = function(e, r, n, a, d) {
-      var i = 1e4 > k.recentlyCreatedOwnerStacks++;
+    }, v.jsxs = function(e, r, n, s, d) {
+      var i = 1e4 > S.recentlyCreatedOwnerStacks++;
       return x(
         e,
         r,
         n,
         !0,
-        a,
+        s,
         d,
         i ? Error("react-stack-top-frame") : Y,
-        i ? S(f(e)) : V
+        i ? k(f(e)) : V
       );
     };
-  }()), v;
+  })()), v;
 }
 var D;
-function fe() {
-  return D || (D = 1, process.env.NODE_ENV === "production" ? T.exports = le() : T.exports = ie()), T.exports;
+function Re() {
+  return D || (D = 1, process.env.NODE_ENV === "production" ? _.exports = Ee() : _.exports = be()), _.exports;
 }
-fe();
-const de = oe(null), P = () => {
-  const t = ae(de);
+var ve = Re();
+const U = se(null), Se = ({ store: t, children: o }) => {
+  const [c] = ue(() => t ?? me());
+  return /* @__PURE__ */ ve.jsx(U.Provider, { value: c, children: o });
+}, P = () => {
+  const t = ce(U);
   if (!t)
     throw new Error("@stan/react: Store not found. Make sure to initialize StoreProvider.");
-  return t;
-}, me = (t, o) => [
+  return le(() => {
+    globalThis.stanStore = t;
+  }, [t]), t;
+}, Te = (t, o) => [
   (c) => t.observeAtomValue(o, c),
   () => t.peekAtomValue(o)
-], Re = (t) => {
-  const o = P(), [c, f] = se(
-    () => me(o, t),
-    [o, t]
-  );
-  return ue(c, f);
-}, ve = (t) => {
+], ke = (t) => {
   if (!W(t))
+    throw new Error("Tried to read non-readable atom");
+  const o = P(), [c, f] = ie(
+    () => Te(o, t),
+    [o, t]
+  ), a = fe(c, f);
+  return a instanceof Promise ? de(a) : a;
+}, we = (t) => {
+  if (!L(t))
     throw new Error("Tried to write non-writable atom");
   const o = P();
   return M(
@@ -303,20 +310,23 @@ const de = oe(null), P = () => {
     [o, t]
   );
 };
-function _e(t) {
-  if (!W(t))
+function Ae(t) {
+  if (!L(t))
     throw new Error("Tried to write non-writable atom");
   const o = P();
   return M(
     (c) => {
-      const f = ce(t) ? o.peekAtomValue(t) : void 0, u = c(f);
-      return o.setAtomValue(t, u);
+      const f = W(t) ? o.peekAtomValue(t) : void 0, a = c(f);
+      return o.setAtomValue(t, a);
     },
     [o, t]
   );
 }
 export {
-  Re as useAtomValue,
-  _e as useSetAtomCallback,
-  ve as useSetAtomValue
+  U as StanStoreContext,
+  Se as StoreProvider,
+  ke as useAtomValue,
+  Ae as useSetAtomCallback,
+  we as useSetAtomValue,
+  P as useStore
 };

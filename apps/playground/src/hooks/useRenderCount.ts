@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs -- debug utility that intentionally counts renders */
 import { useRef } from "react";
 
 export const useRenderCount = (label?: string) => {

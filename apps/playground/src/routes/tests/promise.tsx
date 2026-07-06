@@ -1,5 +1,5 @@
 import { createDerivedAtom, createMutableAtom } from '@stan/core';
-import { useAtomValue, useSetAtomCallback, useSetAtomValue } from '@stan/react';
+import { useAtomValue, useSetAtomCallback } from '@stan/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { FC, Suspense } from 'react';
 

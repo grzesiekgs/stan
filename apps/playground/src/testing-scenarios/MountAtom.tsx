@@ -1,6 +1,6 @@
 import { ReadableAtom } from "@stan/core";
 import { FC, useEffect } from "react";
-import { useStore } from "../../../../packages/react/src/context";
+import { useStore } from '@stan/react';
 
 export const MountAtom: FC<{ atom: ReadableAtom<any> }> = ({ atom }) => { 
   const store = useStore();

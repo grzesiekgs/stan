@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { FC } from 'react';
-import { RouteLink } from 'src/types/RouteLink';
+import { RouteLink } from '../../types/RouteLink';
 
 
 const testsLinks: RouteLink[] = [
