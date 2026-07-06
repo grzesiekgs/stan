@@ -3,7 +3,7 @@ import { FC, useEffect } from "react";
 import { useStore } from "../../../../../packages/react/src/context";
 
 export type MountAtomProps = {
-  atom: ReadableAtom<unknown>;
+  atom: ReadableAtom<any>;
   label?: string;
 };
 
@@ -13,9 +13,14 @@ export const MountAtom: FC<MountAtomProps> = ({ atom, label }) => {
   useEffect(() => {
     console.log(`MountAtom - ${label}`, atom);
 
-    return store.observeAtomValue(atom, (value) => {
+    const unmount = store.observeAtomValue(atom, (value) => {
       console.log(`MountAtom observed - ${label}`, value);
     });
+
+    return () => {
+      console.log(`MountAtom - unmount - ${label}`, atom);
+      unmount();
+    };
   }, [store, atom, label]);
 
   return null;

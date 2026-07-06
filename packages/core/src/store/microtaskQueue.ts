@@ -14,15 +14,25 @@ export type MicrotaskStepStats = {
   items: number;
 };
 
-export type MicrotaskStats = {
+export type MicrotaskStats<Item> = {
   info: {
     id: number;
     counter: number;
   };
   items: {
-    rejected: number;
-    atStart: number;
-    atEnd: number;
+    stats: {
+      rejected: number;
+      atStart: number;
+      atEnd: number;
+    };
+    detailsMap: Map<
+      Item,
+      {
+        added: boolean;
+        asked: number;
+        rejected: number;
+      }
+    >;
   };
   pending: MicrotaskStepStats;
   processing: MicrotaskStepStats;
@@ -32,7 +42,7 @@ let counter = 0;
 export class Microtask<Item> {
   private itemsSet: Set<Item>;
   private status: MicrotaskStatus;
-  private stats: MicrotaskStats;
+  private stats: MicrotaskStats<Item>;
   public promise: Promise<void>;
   public id: number;
 
@@ -49,9 +59,12 @@ export class Microtask<Item> {
         counter: counter++,
       },
       items: {
-        rejected: 0,
-        atStart: 0,
-        atEnd: 0,
+        stats: {
+          rejected: 0,
+          atStart: 0,
+          atEnd: 0,
+        },
+        detailsMap: new Map(),
       },
       pending: {
         start: performance.now(),
@@ -77,7 +90,7 @@ export class Microtask<Item> {
 
   private process = async (): Promise<void> => {
     // gather stats
-    this.stats.items.atStart = this.itemsSet.size;
+    this.stats.items.stats.atStart = this.itemsSet.size;
     this.stats.pending.duration = performance.now() - this.stats.pending.start;
     this.stats.pending.items = this.itemsSet.size;
     this.stats.processing.start = performance.now();
@@ -86,7 +99,7 @@ export class Microtask<Item> {
 
     await this.microtaskCallback(this.itemsSet);
     // gather stats
-    this.stats.items.atEnd = this.itemsSet.size;
+    this.stats.items.stats.atEnd = this.itemsSet.size;
     this.stats.processing.duration = performance.now() - this.stats.processing.start;
     this.stats.processing.items = this.itemsSet.size;
 
@@ -96,8 +109,19 @@ export class Microtask<Item> {
   // Note that currently it's allowed to add item during microtask processing. Not sure is this legit.
   // My understanding is that it could happen only when called from within microtask processing, which "extends" current microtask.
   public add = (item: Item): boolean => {
+    const itemStats = this.stats.items.detailsMap.get(item) ?? {
+      added: false,
+      asked: 0,
+      rejected: 0,
+    };
+    this.stats.items.detailsMap.set(item, itemStats);
+
+    itemStats.asked++;
+
     if (this.itemsSet.has(item)) {
-      this.stats.items.rejected++;
+      this.stats.items.stats.rejected++;
+      itemStats.rejected++;
+
       return false;
     }
 
@@ -107,9 +131,11 @@ export class Microtask<Item> {
 
     this.itemsSet.add(item);
 
+    itemStats.added = true;
+
     return true;
   };
-  public getStats = (): MicrotaskStats => {
+  public getStats = (): MicrotaskStats<Item> => {
     return this.stats;
   };
 }
@@ -135,8 +161,6 @@ export const createMicrotaskQueue = <Item>(
         if (newMicrotask === latestMicrotask) {
           latestMicrotask = null;
         }
-        console.log('MICROTASK FINISHED', newMicrotask.getStats());
-        microtasksStats.push(JSON.stringify(newMicrotask.getStats()));
       }, latestMicrotask);
 
       latestMicrotask = newMicrotask;

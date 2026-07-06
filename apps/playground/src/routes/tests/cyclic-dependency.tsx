@@ -3,37 +3,65 @@ import { FC, useState } from 'react';
 import { PrintAtom } from '../../components/common/PrintAtom';
 import { useSetAtomCallback } from '@stan/react';
 import { createFileRoute } from '@tanstack/react-router';
+import { MountAtom } from '../../components/common/MountAtom';
 
-const valueAtom = createMutableAtom(0, undefined, {
+const valueAtom = createMutableAtom<number>(0, undefined, {
   storeLabel: 'root',
+  onObserve: () => {
+    console.log('ROOT - OBSERVE');
+    return {
+      unsubscribe: () => {
+        console.log('ROOT - UNOBSERVE');
+      },
+    };
+    console.log('ROOT - UNOBSERVE');
+  },
 });
 
 const derivedAtom = createDerivedAtom<number>(
-  ({ get, scheduleSet }) => {
+  ({ get, scheduleSet }, lastValue) => {
+    console.log('DERIVED READ', lastValue);
     const value = get(valueAtom);
     const nextValue = value + 1;
     console.log('DERIVED SCHEDULE SET', nextValue);
-    
-      scheduleSet(valueAtom, nextValue)
-    
+
+    scheduleSet(valueAtom, nextValue);
 
     return value;
   },
   undefined,
   {
+    onObserve: () => {
+      console.log('DERIVED - OBSERVE');
+      return () => {
+        console.log('DERIVED - UNOBSERVE');
+      };
+    },
     storeLabel: 'derived',
   }
 );
 
-const observerAtom = createObserverAtom(({ get, scheduleSet }) => {
-  const value = get(valueAtom);
-  const nextValue = value + 1;
-  console.log('OBSERVER SCHEDULE SET', nextValue);
+const observerAtom = createObserverAtom(
+  ({ get, scheduleSet }) => {
+    console.log('OBSERVER READ');
+    const value = get(valueAtom);
+    const nextValue = value + 1;
+    console.log('OBSERVER SCHEDULE SET', nextValue);
 
-  scheduleSet(valueAtom, nextValue)
+    scheduleSet(valueAtom, nextValue);
 
-  return value;
-});
+    return value;
+  },
+  {
+    storeLabel: 'custom observer',
+    onObserve: () => {
+      console.log('OBSERVER - OBSERVE');
+      return () => {
+        console.log('OBSERVER - UNOBSERVE');
+      };
+    },
+  }
+);
 
 export const CyclicDependencyTest: FC = () => {
   const setValue = useSetAtomCallback(valueAtom);
@@ -54,7 +82,7 @@ export const CyclicDependencyTest: FC = () => {
       </button>
 
       {mountDerived && <PrintAtom atom={derivedAtom} />}
-      {mountObserver && <PrintAtom atom={observerAtom} />}
+      {mountObserver && <MountAtom atom={observerAtom} />}
     </div>
   );
 };

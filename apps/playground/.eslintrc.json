@@ -1,0 +1,3 @@
+{
+  "extends": ["../../configs/eslint/eslint-app.json"]
+} 

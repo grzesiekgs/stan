@@ -119,8 +119,15 @@ export const getDependenciesToUnobserve = (
   return previousDependencies.difference(currentDependencies);
 };
 
-export const createAtomReadCycle = (observed: boolean): AtomReadCycle => ({
-  id: performance.now(),
-  chain: new Set(),
-  observed,
-});
+export const createAtomReadCycle = (
+  observed: boolean,
+  preExistingChain?: AtomReadCycle['chain']
+): AtomReadCycle => {
+  const chain = new Set<ReadableAtom<any>>(preExistingChain);
+
+  return {
+    id: performance.now(),
+    chain,
+    observed,
+  };
+};

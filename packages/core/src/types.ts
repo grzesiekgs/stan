@@ -18,7 +18,11 @@ export type WriteAtom<UpdateValue, UpdateResult = UpdateValue> = (
 // Only writable atoms have access to setSelf.
 export type AtomOnObserve<Update> = [Update] extends [never]
   ? (args: { peek: StoreGetAtomValue }) => void | VoidFunction
-  : (args: { peek: StoreGetAtomValue; setSelf: AtomSetSelf<Update> }) => void | VoidFunction;
+  : (args: {
+      peek: StoreGetAtomValue;
+      setSelf: AtomSetSelf<Update>;
+    }) => void | VoidFunction | { unsubscribe?: VoidFunction; value?: Update };
+      
 
 export type ReadableAtomType = 'mutable' | 'derived' | 'observer';
 export type WritableAtomType = 'mutable' | 'derived' | 'callback';
@@ -85,7 +89,7 @@ export type StoreObserveAtomValue = <Value>(
 ) => VoidFunction;
 
 export type AtomReadCycle = {
-  id: number;
+  id: number; // TODO Most likely simplify by removing id
   chain: Set<ReadableAtom<any>>;
   observed: boolean;
 };
@@ -119,7 +123,7 @@ export type BaseAtomState = {
 export enum AtomStateStatus {
   FRESH = 'fresh',
   STALE = 'stale',
-  PENDING = 'pending',
+  UNDETERMINED = 'undetermined',
 }
 export type InitialAtomState = BaseAtomState & {
   status: AtomStateStatus.STALE;
@@ -180,3 +184,5 @@ export type CreateReadableAtomOptions<Update> = {
   // TODO Add onMount? Look ReadableAtom/WritableAtom for more details.
   onObserve?: [Update] extends [never] ? AtomOnObserve<never> : AtomOnObserve<Update>;
 };
+
+export type UnwrapPromise<Type> = Type extends Promise<infer PromiseType> ? PromiseType : Type; 

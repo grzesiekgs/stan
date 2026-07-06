@@ -1,0 +1,6 @@
+{
+  "extends": ["./shared-react.json"],
+  "env": {
+    "browser": true
+  }
+} 

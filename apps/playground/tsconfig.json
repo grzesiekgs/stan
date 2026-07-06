@@ -1,5 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
+  "target": "node",
   "compilerOptions": {
     "jsx": "react-jsx",
     "baseUrl": ".",

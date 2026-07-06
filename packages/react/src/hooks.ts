@@ -1,5 +1,12 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { ReadableAtom, WritableAtom, isWritableAtom, isReadableAtom, Store } from '@stan/core';
+import { use, useCallback, useMemo, useSyncExternalStore } from 'react';
+import {
+  ReadableAtom,
+  WritableAtom,
+  isWritableAtom,
+  isReadableAtom,
+  Store,
+  UnwrapPromise,
+} from '@stan/core';
 import { useStore } from './context';
 
 type SubscribeToStore = (callback: VoidFunction) => VoidFunction;
@@ -14,7 +21,7 @@ const buildSyncExternalStoreArgs = <Value>(
   () => store.peekAtomValue(readableAtom),
 ];
 
-export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): Value => {
+export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): UnwrapPromise<Value> => {
   if (!isReadableAtom<Value>(readableAtom)) {
     throw new Error('Tried to read non-readable atom');
   }
@@ -26,7 +33,11 @@ export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): Value =>
   );
   const value = useSyncExternalStore(subscribe, getSnapshot);
 
-  return value;
+  if (value instanceof Promise) {
+    return use(value);
+  }
+  // TODO I would like to get rid of this type casting. Most likely type guard will be required.
+  return value as UnwrapPromise<Value>;
 };
 
 export type SetAtomValue<Update, Result> = (update: Update) => Result;

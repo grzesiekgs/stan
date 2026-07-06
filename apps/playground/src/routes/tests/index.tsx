@@ -20,6 +20,10 @@ const testsLinks: RouteLink[] = [
     to: '/tests/cyclic-dependency',
     label: 'Cyclic Dependency',
   },
+  {
+    to: '/tests/promise',
+    label: 'Promise',
+  },
 ];
 
 const TestsPage: FC = () => {

@@ -73,7 +73,8 @@ export function createObserverAtom(
 
       return lastValue;
     },
-  };
+    onObserve: options?.onObserve,
+  } as ObserverAtom;
 }
 
 export const createCallbackAtom = <UpdateValue, UpdateResult = UpdateValue>(

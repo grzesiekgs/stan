@@ -1,5 +1,6 @@
 import { createObserverAtom } from '../atom/createAtom';
 import { isDependentAtom, isMutableAtom, isWritableAtom } from '../atom/utils';
+import { NoOnObserveInitialValueSymbol, NoOnObserveInitialValueSymbolType } from '../symbols';
 import {
   AtomToStateMap,
   ReadableAtom,
@@ -31,36 +32,9 @@ export const createStore = (): Store => {
         console.warn('SANITY CHECK IS ACTUALLY NECESSARY??');
         return;
       }
-      // WARNING: Turns out that order doesn't really matter due to fact that readAtomValue is now pre-warming atom dependencies.
 
-      //const orderedDependentsToRecalculate: DerivedAtom<any, any, any>[] = [];
-      // TODO This could be optimized, because right now set has to be sorted and then array has to be iterated over.
-      // dependentsToRecalculate.forEach((deriverAtom) => {
-      //   const deriverAtomState = getAtomStateFromStateMap(deriverAtom, atomToStateMap);
-      //   // Don't consider deriverAtom for recalculation if it's fresh.
-      //   // E.g. it has been read in same cycle as it's dependencies.
-      //   if (!deriverAtomState.isObserved || deriverAtomState.status === AtomStateStatus.FRESH) {
-      //     return;
-      //   }
-      //   // Sort dependents in order of their dependencies. Deriver with no other dependents as dependencies, should be first.
-      //   // Deriver which depends on other not-fresh deriver, should be next, and so on.
-      //   // This order has to be maintained because dependents lower in list, could mark dependents higher in list as not fresh.
-      //   const orderedDeriverOfDeriverIndex = orderedDependentsToRecalculate.findIndex(
-      //     (orderedDeriver) => {
-      //       return deriverAtomState.dependents?.has(orderedDeriver);
-      //     }
-      //   );
-
-      //   if (orderedDeriverOfDeriverIndex > -1) {
-      //     orderedDependentsToRecalculate.splice(orderedDeriverOfDeriverIndex, 0, deriverAtom);
-      //     splice++;
-      //   } else {
-      //     push++;
-      //     orderedDependentsToRecalculate.push(deriverAtom);
-      //   }
-      // });
       const alreadyProcessed = new Set<DependentAtom<any>>();
-      // console.log('SORTING', performance.now() - start, splice, push);
+
       dependentsToRecalculate.forEach((deriverAtom) => {
         if (alreadyProcessed.has(deriverAtom)) {
           console.warn('REPROCESSING DERIVER', deriverAtom.storeLabel);
@@ -92,7 +66,7 @@ export const createStore = (): Store => {
     atomState.dependencies?.forEach(possiblyUnobserveAtom);
   };
   const unobserveAtomQueue = createMicrotaskQueue<ReadableAtom<any>>(async (atomsToUnobserve) => {
-    // await recalculateDependentsQueue.getMicrotaskPromise();
+    await recalculateDependentsQueue.getMicrotaskPromise();
 
     atomsToUnobserve.forEach(possiblyUnobserveAtom);
   });
@@ -100,8 +74,8 @@ export const createStore = (): Store => {
   const markDependentAtomForRecalculation = (atom: DependentAtom<any>, status: AtomStateStatus) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // Atom A could be marked as stale, but could be also deriver of atom B which is being marked as stale,
-    // and this could mark atom A as pending [look at end of this function].
-    // Therefore make sure to not override stale status, to ensure that atom will be updated in recalculate phase.
+    // and this could mark atom A as undetermined [look at end of this function].
+    // Therefore make sure to not override undetermined status, to ensure that atom will be updated in recalculate phase.
     // This seems to apply only to derived atoms, therefore could be moved to derivedAtom.read (the IDEA for store modularization refactor).
     if (atomState.status !== AtomStateStatus.STALE) {
       atomState.status = status;
@@ -112,27 +86,21 @@ export const createStore = (): Store => {
     if (!added) {
       return;
     }
-    // console.log('MARK DEPENDENT FOR RECALCULATION', atomState.dependents?.size, atom);
 
+    // If atom did update, it's direct dependats are marked as stale, but it's uncertain does dependants of dependants actually have to update.
     atomState.dependents?.forEach((dependentAtom) =>
-      markDependentAtomForRecalculation(dependentAtom, AtomStateStatus.PENDING)
+      markDependentAtomForRecalculation(dependentAtom, AtomStateStatus.UNDETERMINED)
     );
   };
 
   const updateAtomValue = <Value>(atom: ReadableAtom<Value>, value: Value): void => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    // console.log('UPDATE VALUE', {
-    //   label: atom.storeLabel,
-    //   value,
-    //   currentValue: atomState.value,
-    //   isEqual: atomState.value === value,
-    // });
+
     atomState.status = AtomStateStatus.FRESH;
     // Skip update if value did not change.
     if (atomState.value === value) {
       return;
     }
-
     // Since atom value updated, then value of direct dependents is stale until it will be recalculated.
     atomState.dependents?.forEach((dependentAtom) =>
       markDependentAtomForRecalculation(dependentAtom, AtomStateStatus.STALE)
@@ -142,34 +110,53 @@ export const createStore = (): Store => {
     atomState.dependents = undefined;
   };
 
-  const markAtomAsObserved = <Value, Update>(atom: ReadableAtom<Value>) => {
+  const markAtomAsObserved = <Value, Update>(
+    atom: ReadableAtom<Value>
+  ): Value | NoOnObserveInitialValueSymbolType => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-
+    // Atom already observed.
     if (atomState.isObserved) {
-      return;
+      return NoOnObserveInitialValueSymbol;
     }
-
+    // Mark dependencies as observed before marking given atom as observed.
     atomState.dependencies?.forEach(markAtomAsObserved);
     atomState.isObserved = true;
 
     if (!atom.onObserve) {
-      return;
+      return NoOnObserveInitialValueSymbol;
     }
     // Atom that is not writable, doesn't have access to setSelf in onObserve.
-    const onUnobserve = isWritableAtom<Value, Update>(atom)
+    const onObserveResult = isWritableAtom<Value, Update>(atom)
       ? atom.onObserve({
           peek: storeApi.peekAtomValue,
-          // Consider allowing to set any atom within onObserve.
+          // TODO Consider allowing to set any atom within onObserve.
+          // What is the use case? To avoid wrapper atom pattern from jotai?
+
+          // Not sure why do I need (value: Value) out there :/ setSelf seems to be correctly typed, but value is any.
           setSelf: (value: Value) => {
-            // Not sure why do I need (value: Value) out there :/ setSelf seems to be correctly typed, but value is any.
             storeApi.setAtomValue(atom, value);
           },
         })
       : atom.onObserve({ peek: storeApi.peekAtomValue });
 
-    if (onUnobserve) {
-      atomState.onUnobserve = onUnobserve;
+    if (!onObserveResult) {
+      return NoOnObserveInitialValueSymbol;
     }
+
+    if (typeof onObserveResult === 'function') {
+      atomState.onUnobserve = onObserveResult;
+
+      return NoOnObserveInitialValueSymbol;
+    }
+
+    const { unsubscribe, value } = Object.assign(
+      { value: NoOnObserveInitialValueSymbol },
+      onObserveResult
+    );
+
+    atomState.onUnobserve = unsubscribe;
+
+    return value;
   };
 
   const unlinkAtomPreviousDependencies = (
@@ -192,39 +179,48 @@ export const createStore = (): Store => {
   };
 
   const readAtomValue: ReadAtomValue = (atom, readCycle) => {
-    const start = performance.now();
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
-    // When to mark atom as not observed??
-    if (readCycle.observed) {
-      markAtomAsObserved(atom);
+    if (readCycle.chain.has(atom)) {
+      throw new Error(`Cycle detected in read chain: ${atom.storeLabel}`);
     }
+
+    readCycle.chain.add(atom);
+
+    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+
+    if (readCycle.observed) {
+      const onOnbserveInitialValue = markAtomAsObserved(atom);
+
+      if (onOnbserveInitialValue !== NoOnObserveInitialValueSymbol) {
+        updateAtomValue(atom, onOnbserveInitialValue);
+
+        return onOnbserveInitialValue;
+      }
+    }
+
     // When state is marked as fresh, theres was no update since last read, therefore return value.
     if (atomState.status === AtomStateStatus.FRESH) {
       return atomState.value;
     }
+
     // Sanity check. Only mutable atom is always fresh.
     if (!isDependentAtom(atom)) {
       throw new Error(
         `Somehow MutableAtom has been marked as not fresh! This shouldn't be possible! - ${atom.storeLabel}`
       );
     }
-    // Prevent cyclic dependencies. Applies only to derived atoms, because mutable atoms have no dependencies.
-    if (readCycle.chain.has(atom)) {
-      throw new Error(`Cycle detected in read chain: ${atom.storeLabel}`);
-    }
-    readCycle.chain.add(atom);
-    // TODO TRY TO REFACTOR THIS
-    // If atom is pending, it means that it's dependencies could be stale, therefore read them to trigger recalculation.
-    // It effectively means pre-warming dependencies.
-    if (atomState.status === AtomStateStatus.PENDING) {
-      atomState.dependencies?.forEach((dependencyAtom) => readAtomValue(dependencyAtom, readCycle));
-      // Calling readAtomValue for dependencies, could mark atom as stale,
-      // but if atom is still pending, it means that dependencies didn't change,
-      // therefore atom is actually fresh and shouldn't recalculate.
-      if (performance.now() - start > 1) {
-        console.log('PENDING', performance.now() - start);
-      }
-      if (atomState.status === AtomStateStatus.PENDING) {
+    // If atom updated, it's direct dependants are marked as STALE,
+    // but dependants of dependants are marked as UNDETERMINED as we are actually not certain do we have to recalculate these.
+    // Therefore traverse dependencies in search of STALE atom, if such atom will be found,
+    // it will recalculate, and mark all of direct dependants as STALE. Process will repeat from bottom of dependency tree to this atom,
+    // effectively marking atoms as STALE on the way.
+    if (atomState.status === AtomStateStatus.UNDETERMINED) {
+      // Don't reuse cycle for prewarming. Cycle will be reused few lines later, if it will be decided that atom hs to recalculate.
+      atomState.dependencies?.forEach((dependencyAtom) =>
+        readAtomValue(dependencyAtom, createAtomReadCycle(false))
+      );
+      // Since dependency tree was traversed, and atom is still UNDETERMINED (not STALE),
+      // it means that atom didn't have to recalculate as result of updating dependency.
+      if (atomState.status === AtomStateStatus.UNDETERMINED) {
         atomState.status = AtomStateStatus.FRESH;
 
         return atomState.value;
@@ -239,7 +235,10 @@ export const createStore = (): Store => {
     const value = atom.read(
       {
         get: (dependencyAtom) => {
-          const sourceAtomValue = readAtomValue(dependencyAtom, readCycle);
+          const sourceAtomValue = readAtomValue(
+            dependencyAtom,
+            createAtomReadCycle(readCycle.observed, readCycle.chain) // Create new read chain, using previous chain.
+          );
           const sourceAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
           // Note that subscription happens after sourceAtom has been updated in store.
           addAtomDependency(atomState, dependencyAtom);
@@ -286,10 +285,10 @@ export const createStore = (): Store => {
           listener(value);
         },
         {
-          storeLabel: `observer-${atom.storeLabel}`,
+          storeLabel: `observer[${atom.storeLabel}]`,
         }
       );
-      // Pretent that wrapper observer is observed by some entity.
+      // Mark observer as observed, so it will keep receiving updates until unobserved.
       readAtomValue(observerAtom, createAtomReadCycle(true));
 
       return () => {
@@ -298,7 +297,7 @@ export const createStore = (): Store => {
     },
     resetAtomState(atom) {
       console.log('RESET ATOM', atom.storeLabel);
-      // TODO Consider checking is atom actually mounted. (what for??)
+      // TODO Unmount -> reset in store -> mount if was previously mounted and restore derivers????
     },
     getAtomState: (atom) => getAtomStateFromStateMap(atom, atomToStateMap),
     peekAtomToStateMap: () => atomToStateMap,
