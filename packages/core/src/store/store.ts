@@ -1,16 +1,23 @@
 import { createObserverAtom } from '../atom/createAtom';
-import { isDependentAtom, isMutableAtom, isWritableAtom } from '../atom/utils';
+import {
+  isDependentAtom,
+  isMutableAtom,
+  isCallbackAtom,
+  isDerivedAtom,
+  resolveAtomOnObserve,
+} from '../atom/utils';
 import { NoOnObserveInitialValueSymbol, NoOnObserveInitialValueSymbolType } from '../symbols';
 import {
   AtomToStateMap,
-  ReadableAtom,
+  GettableAtom,
+  AnySettableAtom,
   Store,
   ScheduleWriteAtomValue,
   ReadAtomValue,
-  WriteAtomValue,
   AtomStateStatus,
   DependentAtom,
   DependencyAtom,
+  AtomOnObserveResultObject,
 } from '../types';
 import { createMicrotaskQueue } from './microtaskQueue';
 import {
@@ -51,21 +58,21 @@ export const createStore = (): Store => {
     }
   );
   (globalThis as any).mcQueue = recalculateDependentsQueue;
-  const possiblyUnobserveAtom = (atom: ReadableAtom<any>) => {
+  const possiblyUnobserveAtom = (atom: GettableAtom) => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     const hasObservedDependents = Array.from(atomState.dependents ?? []).some(
-      (dependentAtom) => getAtomStateFromStateMap(dependentAtom as any, atomToStateMap).isObserved
+      (dependentAtom) => getAtomStateFromStateMap(dependentAtom, atomToStateMap).isObserved
     );
     // Atom is still observed by other atom.
     if (hasObservedDependents) {
       return;
     }
 
-    atomState.onUnobserve?.();
+    atomState.onUnobserve?.(atomState.value);
     atomState.isObserved = false;
     atomState.dependencies?.forEach(possiblyUnobserveAtom);
   };
-  const unobserveAtomQueue = createMicrotaskQueue<ReadableAtom<any>>(async (atomsToUnobserve) => {
+  const unobserveAtomQueue = createMicrotaskQueue<GettableAtom>(async (atomsToUnobserve) => {
     await recalculateDependentsQueue.getMicrotaskPromise();
 
     atomsToUnobserve.forEach(possiblyUnobserveAtom);
@@ -93,7 +100,7 @@ export const createStore = (): Store => {
     );
   };
 
-  const updateAtomValue = <Value>(atom: ReadableAtom<Value>, value: Value): void => {
+  const updateAtomValue = <Value>(atom: GettableAtom<Value>, value: Value): void => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
 
     atomState.status = AtomStateStatus.FRESH;
@@ -110,8 +117,8 @@ export const createStore = (): Store => {
     atomState.dependents = undefined;
   };
 
-  const markAtomAsObserved = <Value, Update>(
-    atom: ReadableAtom<Value>
+  const markAtomAsObserved = <Value>(
+    atom: GettableAtom<Value>
   ): Value | NoOnObserveInitialValueSymbolType => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // Atom already observed.
@@ -119,27 +126,17 @@ export const createStore = (): Store => {
       return NoOnObserveInitialValueSymbol;
     }
     // Mark dependencies as observed before marking given atom as observed.
+    // TODO Should we actually revert it and set isObserved = true before iterating dependencies?
     atomState.dependencies?.forEach(markAtomAsObserved);
     atomState.isObserved = true;
 
-    if (!atom.onObserve) {
-      return NoOnObserveInitialValueSymbol;
-    }
-    // Atom that is not writable, doesn't have access to setSelf in onObserve.
-    const onObserveResult = isWritableAtom<Value, Update>(atom)
-      ? atom.onObserve({
-          peek: storeApi.peekAtomValue,
-          // TODO Consider allowing to set any atom within onObserve.
-          // What is the use case? To avoid wrapper atom pattern from jotai?
-
-          // Not sure why do I need (value: Value) out there :/ setSelf seems to be correctly typed, but value is any.
-          setSelf: (value: Value) => {
-            storeApi.setAtomValue(atom, value);
-          },
-        })
-      : atom.onObserve({ peek: storeApi.peekAtomValue });
+    const onObserveResult = resolveAtomOnObserve(atom, atomState.value, storeApi);
 
     if (!onObserveResult) {
+      return NoOnObserveInitialValueSymbol;
+    }
+
+    if (onObserveResult === NoOnObserveInitialValueSymbol) {
       return NoOnObserveInitialValueSymbol;
     }
 
@@ -149,14 +146,13 @@ export const createStore = (): Store => {
       return NoOnObserveInitialValueSymbol;
     }
 
-    const { unsubscribe, value } = Object.assign(
-      { value: NoOnObserveInitialValueSymbol },
-      onObserveResult
-    );
+    atomState.onUnobserve = onObserveResult.onUnobserve;
 
-    atomState.onUnobserve = unsubscribe;
+    if ('value' in onObserveResult) {
+      return onObserveResult.value;
+    }
 
-    return value;
+    return NoOnObserveInitialValueSymbol;
   };
 
   const unlinkAtomPreviousDependencies = (
@@ -169,7 +165,7 @@ export const createStore = (): Store => {
       currentDependencies
     );
 
-    dependenciesToUnobserve?.forEach((dependencyAtom: ReadableAtom<any>) => {
+    dependenciesToUnobserve?.forEach((dependencyAtom) => {
       const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
 
       removeAtomDependent(dependencyAtomState, atom);
@@ -246,7 +242,7 @@ export const createStore = (): Store => {
 
           return sourceAtomValue;
         },
-        peek: storeApi.peekAtomValue,
+        peek: storeApi.peekAtom,
         // TODO Expose scheduleSet just for observer atom? (not introduced yet)
         scheduleSet,
       },
@@ -259,14 +255,30 @@ export const createStore = (): Store => {
     return value;
   };
 
-  const writeAtomValue: WriteAtomValue = (atom, update) => {
-    const value = atom.write({ peek: storeApi.peekAtomValue, set: storeApi.setAtomValue }, update);
-
+  const writeAtomValue = <Update, UpdateResult, TrackedValue>(
+    atom: AnySettableAtom<Update, UpdateResult, TrackedValue>,
+    update: Update
+  ): UpdateResult => {
     if (isMutableAtom(atom)) {
+      const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+      const value = atom.write({ peek: storeApi.peekAtom }, update, atomState.value);
+
       updateAtomValue(atom, value);
+
+      return value;
     }
 
-    return value;
+    const callbackArgs = { peek: storeApi.peekAtom, set: storeApi.setAtom };
+
+    if (isCallbackAtom(atom)) {
+      return atom.callback(callbackArgs, update);
+    }
+
+    if (isDerivedAtom(atom)) {
+      return atom.callback(callbackArgs, update, storeApi.peekAtom(atom));
+    }
+
+    throw new Error(`Atom is not settable: ${atom satisfies never}`);
   };
 
   const scheduleSet: ScheduleWriteAtomValue = (atom, update) => {
@@ -274,9 +286,9 @@ export const createStore = (): Store => {
   };
 
   const storeApi: Store = {
-    peekAtomValue: (atom) => readAtomValue(atom, createAtomReadCycle(false)),
-    setAtomValue: writeAtomValue,
-    observeAtomValue(atom, listener) {
+    peekAtom: (atom) => readAtomValue(atom, createAtomReadCycle(false)),
+    setAtom: writeAtomValue,
+    observeAtom(atom, listener) {
       // Create a wrapper observer which triggers the listener when atom value changes.
       const observerAtom = createObserverAtom(
         ({ get }) => {

@@ -1,15 +1,15 @@
-import { ReadableAtom } from "@stan/core";
-import { FC, useEffect } from "react";
+import { GattableAtom } from '@stan/core';
+import { FC, useEffect } from 'react';
 import { useStore } from '@stan/react';
 
 export type MountAtomProps = {
-  atom: ReadableAtom<any>;
+  atom: GattableAtom<any>;
   label?: string;
 };
 
-export const MountAtom: FC<MountAtomProps> = ({ atom, label }) => { 
+export const MountAtom: FC<MountAtomProps> = ({ atom, label }) => {
   const store = useStore();
-  
+
   useEffect(() => {
     console.log(`MountAtom - ${label}`, atom);
 
@@ -24,5 +24,4 @@ export const MountAtom: FC<MountAtomProps> = ({ atom, label }) => {
   }, [store, atom, label]);
 
   return null;
-
-}
+};

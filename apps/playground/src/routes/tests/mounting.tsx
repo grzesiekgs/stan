@@ -7,7 +7,7 @@ import { PrintAtom } from '../../components/common/PrintAtom';
 
 const aAtom = createMutableAtom(0);
 const bAtom = createMutableAtom(0);
-const switchAtom = createMutableAtom<'A' | 'B'>('A');
+const switchAtom = createMutableAtom<'A' | 'B'>('B');
 
 const aProxyAtom = createDerivedAtom(({ get }) => get(aAtom), undefined, {
   onObserve: () => {
@@ -17,16 +17,23 @@ const aProxyAtom = createDerivedAtom(({ get }) => get(aAtom), undefined, {
     };
   },
 });
-const bProxyAtom = createDerivedAtom(({ get }) => get(bAtom), undefined, {
-  storeLabel: 'bProxy',
-  onObserve: () => {
-    console.log('bProxy observed');
-
-    return () => {
-      console.log('bProxy unobserve');
-    };
+const bProxyAtom = createDerivedAtom(
+  ({ get }) => {
+    console.log('B');
+    return get(bAtom);
   },
-});
+  undefined,
+  {
+    storeLabel: 'bProxy',
+    onObserve: () => {
+      console.log('bProxy observed');
+
+      return () => {
+        console.log('bProxy unobserve');
+      };
+    },
+  }
+);
 const aTextAtom = createDerivedAtom(({ get }) => `A: ${get(aProxyAtom)}`, undefined, {
   storeLabel: 'aText',
 });

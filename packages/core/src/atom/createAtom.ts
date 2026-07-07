@@ -2,30 +2,45 @@ import {
   MutableAtom,
   DerivedAtom,
   CallbackAtom,
-  WriteAtom,
-  ReadAtom,
-  CreateReadableAtomOptions,
+  AtomWrite,
+  AtomRead,
+  CreateGettableAtomOptions,
   AtomType,
   ObserverAtom,
+  AtomCallback,
 } from '../types';
 
-const defaultRead: ReadAtom<any> = (_, atomState) => atomState.value;
-const defaultWrite: WriteAtom<any> = (args, value) => value;
-
+const defaultRead: AtomRead<any> = (_, atomState) => atomState.value;
+const defaultWrite: AtomWrite<any> = (_args, value) => value;
+/** TODO!!! CONSIDER THIS AS THIS WOULD REQUIRE SIGNIFICANT TYPES REFACTOR!
+ * 
+ * for createMutableAtom -  This atom should be able to only modify itself via it's setter.
+ *                          keep 'write' function, but remove 'set' from it, leave 'peek',
+ *                          but also add 'currentValue'.
+ * for createDerivedAtom -  This atom should be able to call other atom setters, but not modify itself,
+ *                          since it's value is always derived from other atoms.
+ *                          This is basically createCallbackAtom but with access to 'currentValue', since
+                            it helds derived value
+ * for createCallbackAtom - This atom should be able to call other atom setters, but not midify itself
+                            since it never helds value
+                            replace 'write' with 'callback', keep 'set' and 'peek', this atom never set's itself
+                            therefore it's return value is just 'store callback signal' - never persisted
+                            callbackAtom doesn't have access to 'currentValue' (but derivedAtom does)
+ */
 export function createMutableAtom<Value>(
   value: Value,
   write?: undefined,
-  options?: CreateReadableAtomOptions<Value>
+  options?: CreateGettableAtomOptions<Value, Value>
 ): MutableAtom<Value, Value>;
 export function createMutableAtom<Value, UpdateValue>(
   value: Value,
-  write: WriteAtom<UpdateValue, Value>,
-  options?: CreateReadableAtomOptions<UpdateValue>
+  write: AtomWrite<Value, UpdateValue>,
+  options?: CreateGettableAtomOptions<Value, UpdateValue>
 ): MutableAtom<Value, UpdateValue>;
 export function createMutableAtom<Value, UpdateValue = Value>(
   value: Value,
-  write?: WriteAtom<UpdateValue, Value>,
-  options?: CreateReadableAtomOptions<UpdateValue>
+  write?: AtomWrite<Value, UpdateValue>,
+  options?: CreateGettableAtomOptions<Value, UpdateValue>
 ): MutableAtom<Value, UpdateValue> {
   return {
     type: 'mutable',
@@ -38,31 +53,36 @@ export function createMutableAtom<Value, UpdateValue = Value>(
 }
 
 export function createDerivedAtom<Value>(
-  read: ReadAtom<Value>,
-  write?: undefined,
-  options?: CreateReadableAtomOptions<never>
-): DerivedAtom<Value, never, never>;
-export function createDerivedAtom<Value, UpdateValue, UpdateResult = UpdateValue>(
-  read: ReadAtom<Value>,
-  write: WriteAtom<UpdateValue, UpdateResult>,
-  options?: CreateReadableAtomOptions<UpdateValue>
+  read: AtomRead<Value>,
+  callback?: undefined,
+  options?: CreateGettableAtomOptions<Value, never>
+): DerivedAtom<Value, void>;
+export function createDerivedAtom<Value, UpdateValue>(
+  read: AtomRead<Value>,
+  callback: AtomCallback<Value, UpdateValue, UpdateValue>,
+  options?: CreateGettableAtomOptions<Value, never>
+): DerivedAtom<Value, UpdateValue, UpdateValue>;
+export function createDerivedAtom<Value, UpdateValue, UpdateResult>(
+  read: AtomRead<Value>,
+  callback: AtomCallback<Value, UpdateValue, UpdateResult>,
+  options?: CreateGettableAtomOptions<Value, never>
 ): DerivedAtom<Value, UpdateValue, UpdateResult>;
-export function createDerivedAtom<Value, UpdateValue = never, UpdateResult = UpdateValue>(
-  read: ReadAtom<Value>,
-  write?: WriteAtom<UpdateValue, UpdateResult>,
-  options?: CreateReadableAtomOptions<UpdateValue>
+export function createDerivedAtom<Value, UpdateValue, UpdateResult = UpdateValue>(
+  read: AtomRead<Value>,
+  callback?: AtomCallback<Value, UpdateValue, UpdateResult>,
+  options?: CreateGettableAtomOptions<Value, never>
 ): DerivedAtom<Value, UpdateValue, UpdateResult> {
   return {
     type: 'derived',
     read,
-    write,
+    callback,
     onObserve: options?.onObserve,
     storeLabel: options?.storeLabel,
   } as DerivedAtom<Value, UpdateValue, UpdateResult>;
 }
 export function createObserverAtom(
-  read: ReadAtom<void>,
-  options?: CreateReadableAtomOptions<void>
+  read: AtomRead<void>,
+  options?: CreateGettableAtomOptions<void, never>
 ): ObserverAtom {
   return {
     type: 'observer',
@@ -78,10 +98,10 @@ export function createObserverAtom(
 }
 
 export const createCallbackAtom = <UpdateValue, UpdateResult = UpdateValue>(
-  write: WriteAtom<UpdateValue, UpdateResult>
+  callback: AtomCallback<never, UpdateValue, UpdateResult>
 ): CallbackAtom<UpdateValue, UpdateResult> => ({
   type: 'callback',
-  write,
+  callback,
 });
 
 type AtomCreator<T extends AtomType> = T extends 'mutable'

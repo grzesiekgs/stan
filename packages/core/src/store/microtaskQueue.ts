@@ -1,5 +1,5 @@
 export type MicrotaskQueue<Item> = {
-  pushItem: (item: Item /* | Item[] | Set<Item> */) => number;
+  pushItem: (item: Item /* | Item[] | Set<Item> */) => boolean;
   getMicrotaskPromise: () => undefined | Promise<void>;
   printStats: () => void;
 };
@@ -150,9 +150,7 @@ export const createMicrotaskQueue = <Item>(
   const api: MicrotaskQueue<Item> = {
     pushItem: (item) => {
       if (latestMicrotask) {
-        latestMicrotask.add(item);
-
-        return latestMicrotask.id;
+        return latestMicrotask.add(item);
       }
 
       const newMicrotask = new Microtask<Item>(async (items: Set<Item>) => {
@@ -165,9 +163,7 @@ export const createMicrotaskQueue = <Item>(
 
       latestMicrotask = newMicrotask;
 
-      newMicrotask.add(item);
-
-      return newMicrotask.id;
+      return newMicrotask.add(item);
     },
     getMicrotaskPromise: () => latestMicrotask?.promise,
     printStats: () => microtasksStats,

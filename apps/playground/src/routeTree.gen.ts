@@ -9,13 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TestRouteImport } from './routes/test'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TestsIndexRouteImport } from './routes/tests/index'
 import { Route as TestsProxyRouteImport } from './routes/tests/proxy'
+import { Route as TestsPromiseRouteImport } from './routes/tests/promise'
 import { Route as TestsMountingRouteImport } from './routes/tests/mounting'
 import { Route as TestsDerivedChainRouteImport } from './routes/tests/derived-chain'
 import { Route as TestsCyclicDependencyRouteImport } from './routes/tests/cyclic-dependency'
 
+const TestRoute = TestRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -29,6 +36,11 @@ const TestsIndexRoute = TestsIndexRouteImport.update({
 const TestsProxyRoute = TestsProxyRouteImport.update({
   id: '/tests/proxy',
   path: '/tests/proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestsPromiseRoute = TestsPromiseRouteImport.update({
+  id: '/tests/promise',
+  path: '/tests/promise',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TestsMountingRoute = TestsMountingRouteImport.update({
@@ -49,26 +61,32 @@ const TestsCyclicDependencyRoute = TestsCyclicDependencyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/test': typeof TestRoute
   '/tests/cyclic-dependency': typeof TestsCyclicDependencyRoute
   '/tests/derived-chain': typeof TestsDerivedChainRoute
   '/tests/mounting': typeof TestsMountingRoute
+  '/tests/promise': typeof TestsPromiseRoute
   '/tests/proxy': typeof TestsProxyRoute
-  '/tests': typeof TestsIndexRoute
+  '/tests/': typeof TestsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/test': typeof TestRoute
   '/tests/cyclic-dependency': typeof TestsCyclicDependencyRoute
   '/tests/derived-chain': typeof TestsDerivedChainRoute
   '/tests/mounting': typeof TestsMountingRoute
+  '/tests/promise': typeof TestsPromiseRoute
   '/tests/proxy': typeof TestsProxyRoute
   '/tests': typeof TestsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/test': typeof TestRoute
   '/tests/cyclic-dependency': typeof TestsCyclicDependencyRoute
   '/tests/derived-chain': typeof TestsDerivedChainRoute
   '/tests/mounting': typeof TestsMountingRoute
+  '/tests/promise': typeof TestsPromiseRoute
   '/tests/proxy': typeof TestsProxyRoute
   '/tests/': typeof TestsIndexRoute
 }
@@ -76,40 +94,55 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/test'
     | '/tests/cyclic-dependency'
     | '/tests/derived-chain'
     | '/tests/mounting'
+    | '/tests/promise'
     | '/tests/proxy'
-    | '/tests'
+    | '/tests/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/test'
     | '/tests/cyclic-dependency'
     | '/tests/derived-chain'
     | '/tests/mounting'
+    | '/tests/promise'
     | '/tests/proxy'
     | '/tests'
   id:
     | '__root__'
     | '/'
+    | '/test'
     | '/tests/cyclic-dependency'
     | '/tests/derived-chain'
     | '/tests/mounting'
+    | '/tests/promise'
     | '/tests/proxy'
     | '/tests/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  TestRoute: typeof TestRoute
   TestsCyclicDependencyRoute: typeof TestsCyclicDependencyRoute
   TestsDerivedChainRoute: typeof TestsDerivedChainRoute
   TestsMountingRoute: typeof TestsMountingRoute
+  TestsPromiseRoute: typeof TestsPromiseRoute
   TestsProxyRoute: typeof TestsProxyRoute
   TestsIndexRoute: typeof TestsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/test': {
+      id: '/test'
+      path: '/test'
+      fullPath: '/test'
+      preLoaderRoute: typeof TestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -120,7 +153,7 @@ declare module '@tanstack/react-router' {
     '/tests/': {
       id: '/tests/'
       path: '/tests'
-      fullPath: '/tests'
+      fullPath: '/tests/'
       preLoaderRoute: typeof TestsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -129,6 +162,13 @@ declare module '@tanstack/react-router' {
       path: '/tests/proxy'
       fullPath: '/tests/proxy'
       preLoaderRoute: typeof TestsProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tests/promise': {
+      id: '/tests/promise'
+      path: '/tests/promise'
+      fullPath: '/tests/promise'
+      preLoaderRoute: typeof TestsPromiseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tests/mounting': {
@@ -157,9 +197,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  TestRoute: TestRoute,
   TestsCyclicDependencyRoute: TestsCyclicDependencyRoute,
   TestsDerivedChainRoute: TestsDerivedChainRoute,
   TestsMountingRoute: TestsMountingRoute,
+  TestsPromiseRoute: TestsPromiseRoute,
   TestsProxyRoute: TestsProxyRoute,
   TestsIndexRoute: TestsIndexRoute,
 }

@@ -2,20 +2,21 @@ import { isMutableAtom } from '../atom/utils';
 import { EmptyAtomValueSymbol } from '../symbols';
 import {
   AtomState,
-  AtomToStateMap,
-  DependentAtomState,
-  InitialAtomState,
+  DerivedAtomState,
+  InitialDerivedAtomState,
+  MutableAtom,
   MutableAtomState,
-  ReadableAtom,
+  GettableAtom,
   AtomStateStatus,
   DependentAtom,
   DependencyAtom,
   AtomReadCycle,
+  AtomToStateMap,
 } from '../types';
 
-export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<Value> => {
-  if (isMutableAtom<Value, unknown>(atom)) {
-    const mutableAtomState: MutableAtomState<Value> = {
+export const createNewAtomState = (atom: GettableAtom): AtomState<any> => {
+  if (isMutableAtom(atom)) {
+    const mutableAtomState: MutableAtomState<any> = {
       value: atom.initialValue,
       dependencies: undefined,
       dependents: undefined,
@@ -27,7 +28,7 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<
     return mutableAtomState;
   }
   // Just to highlight that initialAtomState satisfies DerivedAtomState type.
-  const initialAtomState: InitialAtomState = {
+  const initialAtomState: InitialDerivedAtomState<unknown> = {
     value: EmptyAtomValueSymbol,
     dependencies: undefined,
     dependents: undefined,
@@ -35,15 +36,23 @@ export const createNewAtomState = <Value>(atom: ReadableAtom<Value>): AtomState<
     isObserved: false,
     onUnobserve: undefined,
   };
-  const derivedAtomState: DependentAtomState<Value> = initialAtomState;
+  const derivedAtomState: DerivedAtomState<unknown> = initialAtomState;
 
   return derivedAtomState;
 };
 
-export const getAtomStateFromStateMap = <Value>(
-  atom: ReadableAtom<Value>,
+export function getAtomStateFromStateMap<Value, Update>(
+  atom: MutableAtom<Value, Update>,
   atomToStateMap: AtomToStateMap
-): AtomState<Value> => {
+): MutableAtomState<Value>;
+export function getAtomStateFromStateMap(
+  atom: GettableAtom,
+  atomToStateMap: AtomToStateMap
+): AtomState<any>;
+export function getAtomStateFromStateMap(
+  atom: GettableAtom,
+  atomToStateMap: AtomToStateMap
+): AtomState<any> {
   const atomState = atomToStateMap.get(atom);
 
   if (atomState) {
@@ -54,7 +63,7 @@ export const getAtomStateFromStateMap = <Value>(
   atomToStateMap.set(atom, newAtomState);
 
   return newAtomState;
-};
+}
 // Possibly use weak refs?
 export const addAtomDependent = (
   atomState: AtomState<any>,
@@ -123,7 +132,7 @@ export const createAtomReadCycle = (
   observed: boolean,
   preExistingChain?: AtomReadCycle['chain']
 ): AtomReadCycle => {
-  const chain = new Set<ReadableAtom<any>>(preExistingChain);
+  const chain = new Set<GettableAtom>(preExistingChain);
 
   return {
     id: performance.now(),

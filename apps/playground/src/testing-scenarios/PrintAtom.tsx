@@ -1,8 +1,8 @@
 import { FC } from 'react';
 import { useAtomValue } from '@stan/react';
-import { ReadableAtom } from '@stan/core';
+import { GattableAtom } from '@stan/core';
 
-export const PrintAtom: FC<{ atom: ReadableAtom<any> }> = ({ atom }) => {
+export const PrintAtom: FC<{ atom: GattableAtom<any> }> = ({ atom }) => {
   const value = useAtomValue(atom);
   return <div>{JSON.stringify(value)}</div>;
 };

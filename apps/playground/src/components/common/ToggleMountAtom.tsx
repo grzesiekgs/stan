@@ -1,16 +1,19 @@
-import { ReadableAtom } from "@stan/core";
-import { FC, useState } from "react";
-import { MountAtom } from "./MountAtom";
+import { GattableAtom } from '@stan/core';
+import { FC, useState } from 'react';
+import { MountAtom } from './MountAtom';
 
 export type ToggleMountAtomProps = {
-  atom: ReadableAtom<unknown>;
+  atom: GattableAtom<unknown>;
   label?: string;
   defaultIsMounted?: boolean;
 };
 
-export const ToggleMountAtom: FC<ToggleMountAtomProps> = ({ atom, label, defaultIsMounted = false }) => {
+export const ToggleMountAtom: FC<ToggleMountAtomProps> = ({
+  atom,
+  label,
+  defaultIsMounted = false,
+}) => {
   const [isMounted, setIsMounted] = useState(defaultIsMounted);
-
 
   return (
     <div>

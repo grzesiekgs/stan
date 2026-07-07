@@ -1,9 +1,12 @@
 import { use, useCallback, useMemo, useSyncExternalStore } from 'react';
 import {
-  ReadableAtom,
-  WritableAtom,
-  isWritableAtom,
-  isReadableAtom,
+  GettableAtom,
+  AnySettableAtom,
+  MutableAtom,
+  SettableDerivedAtom,
+  CallbackAtom,
+  isSettableAtom,
+  isGettableAtom,
   Store,
   UnwrapPromise,
 } from '@stan/core';
@@ -15,14 +18,14 @@ type SyncExternalStoreArgs<Value> = [SubscribeToStore, GetStoreSnapshot<Value>];
 
 const buildSyncExternalStoreArgs = <Value>(
   store: Store,
-  readableAtom: ReadableAtom<Value>
+  readableAtom: GettableAtom<Value>
 ): SyncExternalStoreArgs<Value> => [
-  (callback) => store.observeAtomValue(readableAtom, callback),
-  () => store.peekAtomValue(readableAtom),
+  (callback) => store.observeAtom(readableAtom, callback),
+  () => store.peekAtom(readableAtom),
 ];
 
-export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): UnwrapPromise<Value> => {
-  if (!isReadableAtom<Value>(readableAtom)) {
+export const useAtomValue = <Value>(readableAtom: GettableAtom<Value>): UnwrapPromise<Value> => {
+  if (!isGettableAtom<Value>(readableAtom)) {
     throw new Error('Tried to read non-readable atom');
   }
 
@@ -42,17 +45,17 @@ export const useAtomValue = <Value>(readableAtom: ReadableAtom<Value>): UnwrapPr
 
 export type SetAtomValue<Update, Result> = (update: Update) => Result;
 
-export const useSetAtomValue = <Update, Result>(
-  writableAtom: WritableAtom<Update, Result>
+export const useSetAtomValue = <Update, Result, Tracked>(
+  writableAtom: AnySettableAtom<Update, Result, Tracked>
 ): SetAtomValue<Update, Result> => {
-  if (!isWritableAtom<Update, Result>(writableAtom)) {
+  if (!isSettableAtom(writableAtom)) {
     throw new Error('Tried to write non-writable atom');
   }
 
   const store = useStore();
 
   return useCallback<SetAtomValue<Update, Result>>(
-    (update) => store.setAtomValue(writableAtom, update),
+    (update) => store.setAtom(writableAtom, update),
     [store, writableAtom]
   );
 };
@@ -63,15 +66,21 @@ export type CallbackSetAtom<Update, Result, Value> = (
 ) => Result;
 
 export function useSetAtomCallback<Update, Result, Value>(
-  writableAtom: WritableAtom<Update, Result> & ReadableAtom<Value>
+  writableAtom: SettableDerivedAtom<Value, Update, Result>
 ): CallbackSetAtom<Update, Result, Value>;
 export function useSetAtomCallback<Update, Result>(
-  writableAtom: WritableAtom<Update, Result>
+  writableAtom: MutableAtom<Result, Update>
+): CallbackSetAtom<Update, Result, Result>;
+export function useSetAtomCallback<Update, Result>(
+  writableAtom: CallbackAtom<Update, Result>
 ): CallbackSetAtom<Update, Result, undefined>;
 export function useSetAtomCallback<Update, Result, Value>(
-  writableAtom: WritableAtom<Update, Result>
+  writableAtom:
+    | MutableAtom<Result, Update>
+    | SettableDerivedAtom<Value, Update, Result>
+    | CallbackAtom<Update, Result>
 ): CallbackSetAtom<Update, Result, Value | undefined> {
-  if (!isWritableAtom(writableAtom)) {
+  if (!isSettableAtom(writableAtom)) {
     throw new Error('Tried to write non-writable atom');
   }
 
@@ -79,12 +88,12 @@ export function useSetAtomCallback<Update, Result, Value>(
 
   return useCallback<CallbackSetAtom<Update, Result, Value | undefined>>(
     (updateCallback) => {
-      const updateCallbackValue = isReadableAtom<Value>(writableAtom)
-        ? store.peekAtomValue(writableAtom)
+      const updateCallbackValue = isGettableAtom<Value>(writableAtom)
+        ? store.peekAtom(writableAtom)
         : undefined;
       const updateValue = updateCallback(updateCallbackValue);
 
-      return store.setAtomValue<Update, Result>(writableAtom, updateValue);
+      return store.setAtom<Update, Result, Value>(writableAtom, updateValue);
     },
     [store, writableAtom]
   );

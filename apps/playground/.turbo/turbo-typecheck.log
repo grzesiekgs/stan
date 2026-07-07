@@ -1,5 +1,155 @@
-
-
-> playground@0.0.0 typecheck /Users/grzesiek/workspace/private/stan/apps/playground
-> tsc --noEmit
-
+$ tsc --noEmit
+src/components/common/MountAtom.tsx(1,10): error TS2724: '"@stan/core"' has no exported member named 'GattableAtom'. Did you mean 'GettableAtom'?
+src/components/common/MountAtom.tsx(16,27): error TS2551: Property 'observeAtomValue' does not exist on type 'Store'. Did you mean 'observeAtom'?
+src/components/common/MountAtom.tsx(16,51): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/components/common/PrintAtom.tsx(3,10): error TS2724: '"@stan/core"' has no exported member named 'GattableAtom'. Did you mean 'GettableAtom'?
+src/components/common/ToggleMountAtom.tsx(1,10): error TS2724: '"@stan/core"' has no exported member named 'GattableAtom'. Did you mean 'GettableAtom'?
+src/routes/tests/cyclic-dependency.tsx(10,3): error TS2322: Type '() => { unsubscribe: () => void; }' is not assignable to type '(args: { peek: StoreGetAtom; setSelf: AtomSetSelf<number>; }, currentValue: number) => AtomOnObserveResult<number, number>'.
+  Type '{ unsubscribe: () => void; }' is not assignable to type 'AtomOnObserveResult<number, number>'.
+src/routes/tests/cyclic-dependency.tsx(67,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/routes/tests/cyclic-dependency.tsx(74,48): error TS18046: 'val' is of type 'unknown'.
+src/routes/tests/cyclic-dependency.tsx(75,48): error TS18046: 'val' is of type 'unknown'.
+src/routes/tests/derived-chain.tsx(4,48): error TS2724: '"@stan/core"' has no exported member named 'GattableAtom'. Did you mean 'GettableAtom'?
+src/routes/tests/derived-chain.tsx(14,41): error TS2571: Object is of type 'unknown'.
+src/routes/tests/derived-chain.tsx(14,54): error TS2571: Object is of type 'unknown'.
+src/routes/tests/derived-chain.tsx(30,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/routes/tests/derived-chain.tsx(35,48): error TS18046: 'val' is of type 'unknown'.
+src/routes/tests/derived-chain.tsx(36,48): error TS18046: 'val' is of type 'unknown'.
+src/routes/tests/mounting.tsx(53,40): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/routes/tests/mounting.tsx(54,40): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/routes/tests/mounting.tsx(66,51): error TS18046: 'val' is of type 'unknown'.
+src/routes/tests/mounting.tsx(67,51): error TS18046: 'val' is of type 'unknown'.
+src/routes/tests/promise.tsx(26,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/routes/tests/promise.tsx(35,20): error TS18046: 'currentCount' is of type 'unknown'.
+src/routes/tests/proxy.tsx(100,44): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<number, string, void>): CallbackSetAtom<string, void, number>', gave the following error.
+    Argument of type 'DerivedAtom<number, string, void>' is not assignable to parameter of type 'SettableDerivedAtom<number, string, void>'.
+      Type 'DerivedAtom<number, string, void>' is not assignable to type '{ callback: (args: AtomCallbackArgs, value: string, derivedValue: number) => void; }'.
+        Types of property 'callback' are incompatible.
+          Type '((args: AtomCallbackArgs, value: string, derivedValue: number) => void) | undefined' is not assignable to type '(args: AtomCallbackArgs, value: string, derivedValue: number) => void'.
+            Type 'undefined' is not assignable to type '(args: AtomCallbackArgs, value: string, derivedValue: number) => void'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<string, void>): CallbackSetAtom<string, void, undefined>', gave the following error.
+    Argument of type 'DerivedAtom<number, string, void>' is not assignable to parameter of type 'CallbackAtom<string, void>'.
+      Type 'DerivedAtom<number, string, void>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"derived"' is not assignable to type '"callback"'.
+src/testing-scenarios/CyclicDependency.tsx(37,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/testing-scenarios/CyclicDependency.tsx(44,48): error TS18046: 'val' is of type 'unknown'.
+src/testing-scenarios/CyclicDependency.tsx(45,48): error TS18046: 'val' is of type 'unknown'.
+src/testing-scenarios/DerivedChainTest.tsx(3,48): error TS2724: '"@stan/core"' has no exported member named 'GattableAtom'. Did you mean 'GettableAtom'?
+src/testing-scenarios/DerivedChainTest.tsx(12,46): error TS2571: Object is of type 'unknown'.
+src/testing-scenarios/DerivedChainTest.tsx(12,59): error TS2571: Object is of type 'unknown'.
+src/testing-scenarios/DerivedChainTest.tsx(25,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/testing-scenarios/DerivedChainTest.tsx(30,48): error TS18046: 'val' is of type 'unknown'.
+src/testing-scenarios/DerivedChainTest.tsx(31,48): error TS18046: 'val' is of type 'unknown'.
+src/testing-scenarios/MountAtom.tsx(1,10): error TS2724: '"@stan/core"' has no exported member named 'GattableAtom'. Did you mean 'GettableAtom'?
+src/testing-scenarios/MountAtom.tsx(10,18): error TS2551: Property 'observeAtomValue' does not exist on type 'Store'. Did you mean 'observeAtom'?
+src/testing-scenarios/MountAtom.tsx(10,42): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/testing-scenarios/MountingTest.tsx(45,40): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/testing-scenarios/MountingTest.tsx(46,40): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<unknown, unknown, unknown>): CallbackSetAtom<unknown, unknown, unknown>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'SettableDerivedAtom<unknown, unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type 'DerivedAtom<unknown, unknown, unknown>'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"derived"'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<unknown, unknown>): CallbackSetAtom<unknown, unknown, undefined>', gave the following error.
+    Argument of type 'MutableAtom<number, number>' is not assignable to parameter of type 'CallbackAtom<unknown, unknown>'.
+      Type 'MutableAtom<number, number>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"mutable"' is not assignable to type '"callback"'.
+src/testing-scenarios/MountingTest.tsx(58,51): error TS18046: 'val' is of type 'unknown'.
+src/testing-scenarios/MountingTest.tsx(59,51): error TS18046: 'val' is of type 'unknown'.
+src/testing-scenarios/PrintAtom.tsx(3,10): error TS2724: '"@stan/core"' has no exported member named 'GattableAtom'. Did you mean 'GettableAtom'?
+src/testing-scenarios/ProxyTest.tsx(98,44): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(writableAtom: SettableDerivedAtom<number, string, void>): CallbackSetAtom<string, void, number>', gave the following error.
+    Argument of type 'DerivedAtom<number, string, void>' is not assignable to parameter of type 'SettableDerivedAtom<number, string, void>'.
+      Type 'DerivedAtom<number, string, void>' is not assignable to type '{ callback: (args: AtomCallbackArgs, value: string, derivedValue: number) => void; }'.
+        Types of property 'callback' are incompatible.
+          Type '((args: AtomCallbackArgs, value: string, derivedValue: number) => void) | undefined' is not assignable to type '(args: AtomCallbackArgs, value: string, derivedValue: number) => void'.
+            Type 'undefined' is not assignable to type '(args: AtomCallbackArgs, value: string, derivedValue: number) => void'.
+  Overload 2 of 2, '(writableAtom: CallbackAtom<string, void>): CallbackSetAtom<string, void, undefined>', gave the following error.
+    Argument of type 'DerivedAtom<number, string, void>' is not assignable to parameter of type 'CallbackAtom<string, void>'.
+      Type 'DerivedAtom<number, string, void>' is not assignable to type '{ type: "callback"; }'.
+        Types of property 'type' are incompatible.
+          Type '"derived"' is not assignable to type '"callback"'.
+[ELIFECYCLE] Command failed with exit code 2.
