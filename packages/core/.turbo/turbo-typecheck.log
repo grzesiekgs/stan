@@ -1,55 +1,18 @@
 
 [2m$ tsc --noEmit[22m
-[96msrc/store/store.ts[0m:[93m266[0m:[93m23[0m - [91merror[0m[90m TS2345: [0mArgument of type 'MutableAtom<UpdateResult, Update>' is not assignable to parameter of type 'GettableAtom'.
-  Type 'MutableAtom<UpdateResult, Update>' is not assignable to type 'MutableAtom<any, any>'.
-    Type 'MutableAtom<UpdateResult, Update>' is not assignable to type 'StoreAtom<any, any>'.
-      Types of property 'onObserve' are incompatible.
-        Type 'AtomOnObserve<UpdateResult, Update> | undefined' is not assignable to type '((args: { peek: StoreGetAtom; setSelf: AtomSetSelf<any>; }, currentValue: any) => AtomOnObserveResult<any, any>) | undefined'.
-          Type 'AtomOnObserve<UpdateResult, Update>' is not assignable to type '((args: { peek: StoreGetAtom; setSelf: AtomSetSelf<any>; }, currentValue: any) => AtomOnObserveResult<any, any>) | undefined'.
-            Type '((args: { peek: StoreGetAtom; }, currentValue: UpdateResult) => AtomOnObserveResult<UpdateResult, Update>) | ((args: { ...; }, currentValue: UpdateResult) => AtomOnObserveResult<...>)' is not assignable to type '((args: { peek: StoreGetAtom; setSelf: AtomSetSelf<any>; }, currentValue: any) => AtomOnObserveResult<any, any>) | undefined'.
-              Type '(args: { peek: StoreGetAtom; }, currentValue: UpdateResult) => AtomOnObserveResult<UpdateResult, Update>' is not assignable to type '(args: { peek: StoreGetAtom; setSelf: AtomSetSelf<any>; }, currentValue: any) => AtomOnObserveResult<any, any>'.
-                Type 'AtomOnObserveResult<UpdateResult, Update>' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                  Type 'AtomOnObserveResultObject<UpdateResult, Update>' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                    Type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; } | { onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; value: Update; }' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                      Type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; }' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                        Property 'value' is missing in type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; }' but required in type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
-                          Type 'AtomOnObserveResultObject<UpdateResult, Update>' is not assignable to type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
-                            Type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; } | { onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; value: Update; }' is not assignable to type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
-                              Property 'value' is missing in type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; }' but required in type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
-                                Type 'AtomOnObserve<UpdateResult, Update>' is not assignable to type '(args: { peek: StoreGetAtom; setSelf: AtomSetSelf<any>; }, currentValue: any) => AtomOnObserveResult<any, any>'.
-                                  Type '((args: { peek: StoreGetAtom; }, currentValue: UpdateResult) => AtomOnObserveResult<UpdateResult, Update>) | ((args: { ...; }, currentValue: UpdateResult) => AtomOnObserveResult<...>)' is not assignable to type '(args: { peek: StoreGetAtom; setSelf: AtomSetSelf<any>; }, currentValue: any) => AtomOnObserveResult<any, any>'.
-                                    Type '(args: { peek: StoreGetAtom; }, currentValue: UpdateResult) => AtomOnObserveResult<UpdateResult, Update>' is not assignable to type '(args: { peek: StoreGetAtom; setSelf: AtomSetSelf<any>; }, currentValue: any) => AtomOnObserveResult<any, any>'.
-                                      Type 'AtomOnObserveResult<UpdateResult, Update>' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                                        Type 'AtomOnObserveResultObject<UpdateResult, Update>' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                                          Type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; } | { onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; value: Update; }' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                                            Type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; }' is not assignable to type 'AtomOnObserveResult<any, any>'.
-                                              Property 'value' is missing in type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; }' but required in type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
-                                                Type 'AtomOnObserveResultObject<UpdateResult, Update>' is not assignable to type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
-                                                  Type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; } | { onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; value: Update; }' is not assignable to type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
-                                                    Property 'value' is missing in type '{ onUnobserve?: AtomOnUnobserve<UpdateResult> | undefined; }' but required in type '{ onUnobserve?: AtomOnUnobserve<any> | undefined; value: any; }'.
+[96msrc/store/modules/engine/read-write.ts[0m:[93m159[0m:[93m7[0m - [91merror[0m[90m TS2322: [0mType 'Update | NonNullable<UpdateResult>' is not assignable to type 'UpdateResult'.
+  'UpdateResult' could be instantiated with an arbitrary type which could be unrelated to 'Update | NonNullable<UpdateResult>'.
 
-[7m266[0m       updateAtomValue(atom, value);
-[7m   [0m [91m                      ~~~~[0m
+[7m159[0m       return atom.callback?.(callbackArgs, update) ?? update;
+[7m   [0m [91m      ~~~~~~[0m
 
-  [96msrc/types.ts[0m:[93m29[0m:[93m45[0m
-    [7m29[0m   : { onUnobserve?: AtomOnUnobserve<Value>; value: Update };
-    [7m  [0m [96m                                            ~~~~~[0m
-    'value' is declared here.
-  [96msrc/types.ts[0m:[93m29[0m:[93m45[0m
-    [7m29[0m   : { onUnobserve?: AtomOnUnobserve<Value>; value: Update };
-    [7m  [0m [96m                                            ~~~~~[0m
-    'value' is declared here.
-  [96msrc/types.ts[0m:[93m29[0m:[93m45[0m
-    [7m29[0m   : { onUnobserve?: AtomOnUnobserve<Value>; value: Update };
-    [7m  [0m [96m                                            ~~~~~[0m
-    'value' is declared here.
-  [96msrc/types.ts[0m:[93m29[0m:[93m45[0m
-    [7m29[0m   : { onUnobserve?: AtomOnUnobserve<Value>; value: Update };
-    [7m  [0m [96m                                            ~~~~~[0m
-    'value' is declared here.
+  [96msrc/store/modules/engine/read-write.ts[0m:[93m129[0m:[93m5[0m
+    [7m129[0m     Update,
+    [7m   [0m [96m    ~~~~~~[0m
+    This type parameter might need an `extends UpdateResult` constraint.
 
 
-Found 1 error in src/store/store.ts[90m:266[0m
+Found 1 error in src/store/modules/engine/read-write.ts[90m:159[0m
 
 [41m[31m[[39m[49m[41m[30mELIFECYCLE[39m[49m[41m[31m][39m[49m [31mCommand failed with exit code 2.[39m
 [K[0J

@@ -18,122 +18,117 @@ export type AtomWrite<Value, Update = Value> = (
 ) => Value;
 
 export type AtomCallbackArgs = { peek: StoreGetAtom; set: StoreSetAtom };
-export type AtomCallback<DerivedValue, UpdateValue, UpdateResult = UpdateValue> = [
+export type AtomCallback<UpdateValue, UpdateResult = UpdateValue, DerivedValue = never> = [
   DerivedValue,
 ] extends [never]
   ? (args: AtomCallbackArgs, value: UpdateValue) => UpdateResult
   : (args: AtomCallbackArgs, value: UpdateValue, derivedValue: DerivedValue) => UpdateResult;
-export type AtomOnUnobserve<Value> = (value: Value) => void;
-export type AtomOnObserveResultObject<Value, Update> = [Update] extends [never]
-  ? { onUnobserve?: AtomOnUnobserve<Value> }
-  : { onUnobserve?: AtomOnUnobserve<Value>; value: Update };
-export type AtomOnObserveResult<Value, Update> =
-  | void
-  | AtomOnUnobserve<Value>
-  | AtomOnObserveResultObject<Value, Update>;
-// onObserve is available for GettableAtoms, but only mutable atom has access to setSelf.
-export type AtomOnObserve<Value, Update> = [Update] extends [never]
-  ? (args: { peek: StoreGetAtom }, currentValue: Value) => void | AtomOnObserveResult<Value, Update>
-  : (
-      args: {
-        // Allows to peek other value
-        peek: StoreGetAtom;
-        // Allow to self-update, has same reprecursions as calling Store.set(atom, update)
-        setSelf: AtomSetSelf<Update>;
-      },
-      currentValue: Value
-    ) => AtomOnObserveResult<Value, Update>;
-      
+
+export type AtomOnUnobserveOptions = { reset?: boolean };
+export type AtomOnUnobserve<Value> = (currentValue: Value) => void | AtomOnUnobserveOptions;
+export type AtomOnUnobserveResult<Value> = void | AtomOnUnobserveOptions | AtomOnUnobserve<Value>;
+export type AtomOnObserve<Value, Update> = (
+  args: [Update] extends [never]
+    ? { peek: StoreGetAtom }
+    : { peek: StoreGetAtom; setSelf: (update: Update) => Value },
+  currentValue: Value
+) => void | AtomOnUnobserve<Value>;
+export type AtomOnReset<Value> = (currentValue: Value) => void;
 
 export type GettableAtomType = 'mutable' | 'derived' | 'observer';
 export type SettableAtomType = 'mutable' | 'derived' | 'callback';
-export type AtomType = GettableAtomType | SettableAtomType;
+export type EveryAtomType = GettableAtomType | SettableAtomType;
 
 export type SettableAtomDerivedValue<
   AtomType extends SettableAtomType,
   UpdateResult,
-> = AtomType extends 'mutable' ? UpdateResult : AtomType extends 'callback' ? never : unknown;
+> = AtomType extends 'mutable'
+  ? UpdateResult
+  : AtomType extends 'callback'
+    ? never
+    : unknown | EmptyAtomValueSymbolType;
 
 export type SettableAtom<
-  AtomType extends SettableAtomType,
-  UpdateValue,
-  UpdateResult,
-  DerivedValue extends SettableAtomDerivedValue<AtomType, UpdateResult> = SettableAtomDerivedValue<
+  Update,
+  Result = Update,
+  AtomType extends SettableAtomType = SettableAtomType,
+  DerivedValue extends SettableAtomDerivedValue<AtomType, Result> = SettableAtomDerivedValue<
     AtomType,
-    UpdateResult
+    Result
   >,
 > = {
   type: AtomType;
 } & (AtomType extends 'mutable'
   ? {
-      write: AtomWrite<UpdateResult, UpdateValue>;
+      write: AtomWrite<Result, Update>;
     }
   : {
-      callback: AtomCallback<DerivedValue, UpdateValue, UpdateResult>;
+      callback: AtomCallback<Update, Result, DerivedValue>;
     });
 
-export type StoreAtom<Value, Update> = {
+export type GettableAtom<
+  Value = any,
+  Update = Value,
+  AtomType extends GettableAtomType = GettableAtomType,
+> = {
+  type: AtomType;
   storeLabel?: string;
   read: AtomRead<Value>;
   onObserve?: AtomOnObserve<Value, Update>;
+  onReset?: AtomOnReset<Value>;
 };
 
-export type MutableAtom<Value, Update = Value> = StoreAtom<Value, Update> & {
-  type: 'mutable';
-  write: AtomWrite<Value, Update>;
-  initialValue: Value;
-};
+export type MutableAtomGetInitialValue<Value> = () => Value;
+export type MutableAtom<Value, Update = Value> = GettableAtom<Value, Update, 'mutable'> &
+  SettableAtom<Update, Value, 'mutable'> & {
+    getInitialValue: MutableAtomGetInitialValue<Value>;
+  };
 
-export type DerivedAtom<Value, UpdateValue = void, UpdateResult = UpdateValue> = StoreAtom<
+export type DerivedAtom<Value, UpdateValue = never, UpdateResult = UpdateValue> = GettableAtom<
   Value,
-  never
-> & {
-  type: 'derived';
-  callback?: AtomCallback<Value, UpdateValue, UpdateResult>;
-};
+  // Derived atom cannot override it's value when onObserve is called.
+  never,
+  'derived'
+> &
+  ([UpdateValue] extends [never]
+    ? {}
+    : SettableAtom<UpdateValue, UpdateResult, 'derived', Value | EmptyAtomValueSymbolType>);
 
-export type SettableDerivedAtom<Value, UpdateValue, UpdateResult = UpdateValue> = DerivedAtom<
-  Value,
-  UpdateValue,
-  UpdateResult
-> & {
-  callback: AtomCallback<Value, UpdateValue, UpdateResult>;
-};
-
-export type ObserverAtom = StoreAtom<void, never> & {
-  type: 'observer';
-};
-
-export type GettableAtom<Value = any> =
-  | MutableAtom<Value, any>
-  | DerivedAtom<Value, any, any>
-  | ObserverAtom;
+export type ObserverAtom = GettableAtom<void, never, 'observer'>;
 
 export type CallbackAtom<UpdateValue, UpdateResult = void> = SettableAtom<
-  'callback',
   UpdateValue,
-  UpdateResult
+  UpdateResult,
+  'callback'
 >;
 
-export type AnyAtom = GettableAtom | CallbackAtom<any, any>;
+export type AnyAtom =
+  | GettableAtom<any, any, GettableAtomType>
+  | SettableAtom<any, any, SettableAtomType, any>;
 
-export type AnySettableAtom<Update, UpdateResult, TrackedValue> =
-  | MutableAtom<UpdateResult, Update>
-  | CallbackAtom<Update, UpdateResult>
-  | SettableDerivedAtom<TrackedValue, Update, UpdateResult>;
-
-export type DependentAtom<Value = any> = ObserverAtom | DerivedAtom<Value, any, any>;
+export type DependentAtom<Value = unknown> = ObserverAtom | DerivedAtom<Value, unknown, unknown>;
 
 export type DependencyAtom<Value> = GettableAtom<Value>;
 
 export type StoreGetAtom = <Value>(atom: GettableAtom<Value>) => Value;
 export type StorePeekAtom = <Value>(atom: GettableAtom<Value>) => Value;
-export type StoreSetAtom = <Update, UpdateResult, TrackedValue>(
-  atom: AnySettableAtom<Update, UpdateResult, TrackedValue>,
+export type StoreSetAtom = <
+  Update,
+  UpdateResult,
+  AtomType extends SettableAtomType,
+  TrackedValue extends SettableAtomDerivedValue<AtomType, UpdateResult> = SettableAtomDerivedValue<
+    AtomType,
+    UpdateResult
+  >,
+>(
+  atom: SettableAtom<Update, UpdateResult, AtomType, TrackedValue>,
   update: Update
 ) => UpdateResult;
+
+
 export type StoreResetAtomState = <Value>(atom: GettableAtom<Value>) => void;
 export type StoreGetAtomState = <Value>(atom: GettableAtom<Value>) => AtomState<Value>;
+export type ObserveAtomValue<Value> = (value: Value) => void;
 export type StoreObserveAtom = <Value>(
   atom: GettableAtom<Value>,
   observer: ObserveAtomValue<Value>
@@ -141,28 +136,41 @@ export type StoreObserveAtom = <Value>(
 
 export type AtomReadCycle = {
   id: number; // TODO Most likely simplify by removing id
-  chain: Set<GettableAtom>;
+  chain: Set<GettableAtom<any>>;
   observed: boolean;
 };
 
-export type ReadAtomValue = (atom: GettableAtom, readCycle: AtomReadCycle) => any;
-export type WriteAtomValue = <Update, UpdateResult, TrackedValue>(
-  atom: AnySettableAtom<Update, UpdateResult, TrackedValue>,
+// Same as StoreGetAtom
+export type ReadAtomValue = <Value>(atom: GettableAtom<Value>, readCycle: AtomReadCycle) => Value;
+// Same as StoreSetAtom
+export type WriteAtomValue = <
+  Update,
+  UpdateResult,
+  AtomType extends SettableAtomType,
+  TrackedValue extends SettableAtomDerivedValue<AtomType, UpdateResult> = SettableAtomDerivedValue<
+    AtomType,
+    UpdateResult
+  >,
+>(
+  atom: SettableAtom<Update, UpdateResult, AtomType, TrackedValue>,
   update: Update
 ) => UpdateResult;
-
-export type ScheduleWriteAtomValue = <Update, UpdateResult, TrackedValue>(
-  atom: AnySettableAtom<Update, UpdateResult, TrackedValue>,
+// Same as WriteAtomValue but returns void as we are scheduling update, not doing it immediately.
+export type ScheduleWriteAtomValue = <
+  Update,
+  UpdateResult,
+  AtomType extends SettableAtomType,
+  TrackedValue extends SettableAtomDerivedValue<AtomType, UpdateResult> = SettableAtomDerivedValue<
+    AtomType,
+    UpdateResult
+  >,
+>(
+  atom: SettableAtom<Update, UpdateResult, AtomType, TrackedValue>,
   update: Update
 ) => void;
-export type ObserveAtomValue<Value> = (value: Value) => void;
-export type GetAtomValue<Value> = (atom: GettableAtom<Value>) => Value;
 
-// Require properties with undefined as allowed value, instead of making them optional.
-// This could help optimize atomState object by JS engine, but it's just theory, as atomState.value can be of any type.
-export type BaseAtomState<Value = unknown> = {
+export type BaseAtomState<Value> = {
   isObserved: boolean;
-  // D
   onUnobserve: AtomOnUnobserve<Value> | undefined;
   // TODO Is there a scenario where this Set would incorrectly prevent garbage collection?
   // If such case will be determined, then consider wrapping each DerivedAtom in WeakRef, which can be deref'ed.
@@ -190,11 +198,12 @@ export type DerivedAtomState<Value> = BaseAtomState<Value> &
       }
   );
 
-export type MutableAtomState<Value> = BaseAtomState & {
+export type MutableAtomState<Value> = BaseAtomState<Value> & {
   status: AtomStateStatus.FRESH;
   value: Value;
 };
-
+// Note that there's no ObserverAtomState. ObserverAtom will always return void,
+// therefore it will never propagate updates to it's derivers.
 export type AtomState<Value> = DerivedAtomState<Value> | MutableAtomState<Value>;
 
 export type AtomStoreApi = {
@@ -204,7 +213,7 @@ export type AtomStoreApi = {
   reset: StoreResetAtomState;
 };
 
-export type AtomToStateMap = WeakMap<GettableAtom, AtomState<any>>;
+export type AtomToStateMap = WeakMap<GettableAtom<any>, AtomState<any>>;
 
 export type Store = {
   peekAtom: StorePeekAtom;
@@ -214,6 +223,7 @@ export type Store = {
   getAtomState: StoreGetAtomState;
   peekAtomToStateMap: () => AtomToStateMap;
 };
+export type OnObserveStoreApi = Pick<Store, 'peekAtom' | 'setAtom'>;
 // Consider setSelf returning result of calling atom.write.
 export type AtomSetSelf<Value> = (value: Value) => void;
 

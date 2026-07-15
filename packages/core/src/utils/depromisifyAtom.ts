@@ -29,15 +29,15 @@ export type Depromisify<PromiseValue, PromiseError = Error> =
 
 export const depromisifyAtom = <PromiseValue, PromiseError>(
   promiseAtom: GettableAtom<Promise<PromiseValue>>
-): DerivedAtom<Depromisify<PromiseValue, PromiseError>, void> => {
+): DerivedAtom<Depromisify<PromiseValue, PromiseError>> => {
   const promiseSet = new Set<Promise<PromiseValue>>();
   const stateAtom = createMutableAtom<
     Depromisify<PromiseValue, PromiseError>,
     Depromisify<PromiseValue, PromiseError>
   >(
-    {
+    () => ({
       state: 'pending',
-    },
+    }),
     (_, update, current) => {
       // TODO explain this better, it's about receiving new promise before previous promise resolved.
       // Avoid unecessary updates if promise never resolved but promise has changed.

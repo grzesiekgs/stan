@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { FC } from 'react';
 import { useSetAtomCallback } from '@stan/react';
-import { createDerivedAtom, createMutableAtom, GattableAtom } from '@stan/core';
+import { createDerivedAtom, createMutableAtom, GettableAtom } from '@stan/core';
 import { PrintAtom } from '../../components/common/PrintAtom';
 
-const createComplexChainAtom = (prevAtom: GattableAtom<number>, depth: number) => {
+const createComplexChainAtom = (prevAtom: GettableAtom<number>, depth: number) => {
   const first = createDerivedAtom(({ get }) => get(prevAtom), undefined, {
     storeLabel: `val1 - ${depth}`,
   });
@@ -16,14 +16,14 @@ const createComplexChainAtom = (prevAtom: GattableAtom<number>, depth: number) =
   });
 };
 
-const valueAtom = createMutableAtom(0, undefined, {
+const valueAtom = createMutableAtom(() => 0, undefined, {
   storeLabel: 'root',
 });
 const deepth = 10;
 const proxyAtom = new Array(deepth)
   .fill(null)
   .reduce<
-    GattableAtom<number>
+    GettableAtom<number>
   >((prevAtom, _, index) => createComplexChainAtom(prevAtom, index), valueAtom);
 
 export const DerivedChainTest: FC = () => {

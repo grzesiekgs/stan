@@ -12,12 +12,16 @@ import {
   DependencyAtom,
   AtomReadCycle,
   AtomToStateMap,
+  DerivedAtom,
+  ObserverAtom,
 } from '../types';
 
-export const createNewAtomState = (atom: GettableAtom): AtomState<any> => {
+export const createNewAtomState = <Value, UpdateValue>(
+  atom: GettableAtom<Value, UpdateValue>
+): AtomState<Value> => {
   if (isMutableAtom(atom)) {
-    const mutableAtomState: MutableAtomState<any> = {
-      value: atom.initialValue,
+    const mutableAtomState: MutableAtomState<Value> = {
+      value: atom.getInitialValue(),
       dependencies: undefined,
       dependents: undefined,
       status: AtomStateStatus.FRESH,
@@ -28,7 +32,7 @@ export const createNewAtomState = (atom: GettableAtom): AtomState<any> => {
     return mutableAtomState;
   }
   // Just to highlight that initialAtomState satisfies DerivedAtomState type.
-  const initialAtomState: InitialDerivedAtomState<unknown> = {
+  const initialAtomState: InitialDerivedAtomState<Value> = {
     value: EmptyAtomValueSymbol,
     dependencies: undefined,
     dependents: undefined,
@@ -36,23 +40,31 @@ export const createNewAtomState = (atom: GettableAtom): AtomState<any> => {
     isObserved: false,
     onUnobserve: undefined,
   };
-  const derivedAtomState: DerivedAtomState<unknown> = initialAtomState;
+  const derivedAtomState: DerivedAtomState<Value> = initialAtomState;
 
   return derivedAtomState;
 };
 
+export function getAtomStateFromStateMap(
+  atom: ObserverAtom,
+  atomToStateMap: AtomToStateMap
+): DerivedAtomState<void>;
 export function getAtomStateFromStateMap<Value, Update>(
   atom: MutableAtom<Value, Update>,
   atomToStateMap: AtomToStateMap
 ): MutableAtomState<Value>;
-export function getAtomStateFromStateMap(
-  atom: GettableAtom,
+export function getAtomStateFromStateMap<Value, Update, UpdateResult>(
+  atom: DerivedAtom<Value, Update, UpdateResult>,
   atomToStateMap: AtomToStateMap
-): AtomState<any>;
-export function getAtomStateFromStateMap(
-  atom: GettableAtom,
+): DerivedAtomState<Value>;
+export function getAtomStateFromStateMap<Value, Update>(
+  atom: GettableAtom<Value, Update>,
   atomToStateMap: AtomToStateMap
-): AtomState<any> {
+): AtomState<Value>;
+export function getAtomStateFromStateMap<Value, Update>(
+  atom: GettableAtom<Value, Update>,
+  atomToStateMap: AtomToStateMap
+): AtomState<Value> {
   const atomState = atomToStateMap.get(atom);
 
   if (atomState) {

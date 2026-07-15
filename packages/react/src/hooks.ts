@@ -1,14 +1,16 @@
 import { use, useCallback, useMemo, useSyncExternalStore } from 'react';
 import {
   GettableAtom,
-  AnySettableAtom,
   MutableAtom,
-  SettableDerivedAtom,
   CallbackAtom,
   isSettableAtom,
   isGettableAtom,
   Store,
   UnwrapPromise,
+  DerivedAtom,
+  SettableAtom,
+  SettableAtomType,
+  SettableAtomDerivedValue,
 } from '@stan/core';
 import { useStore } from './context';
 
@@ -45,8 +47,16 @@ export const useAtomValue = <Value>(readableAtom: GettableAtom<Value>): UnwrapPr
 
 export type SetAtomValue<Update, Result> = (update: Update) => Result;
 
-export const useSetAtomValue = <Update, Result, Tracked>(
-  writableAtom: AnySettableAtom<Update, Result, Tracked>
+export const useSetAtomValue = <
+  Update,
+  Result,
+  AtomType extends SettableAtomType,
+  Tracked extends SettableAtomDerivedValue<AtomType, Result> = SettableAtomDerivedValue<
+    AtomType,
+    Result
+  >,
+>(
+  writableAtom: SettableAtom<Update, Result, AtomType, Tracked>
 ): SetAtomValue<Update, Result> => {
   if (!isSettableAtom(writableAtom)) {
     throw new Error('Tried to write non-writable atom');
@@ -55,7 +65,11 @@ export const useSetAtomValue = <Update, Result, Tracked>(
   const store = useStore();
 
   return useCallback<SetAtomValue<Update, Result>>(
-    (update) => store.setAtom(writableAtom, update),
+    (update) => {
+      const res = store.setAtom(writableAtom, update);
+
+      return res;
+    },
     [store, writableAtom]
   );
 };
@@ -66,8 +80,8 @@ export type CallbackSetAtom<Update, Result, Value> = (
 ) => Result;
 
 export function useSetAtomCallback<Update, Result, Value>(
-  writableAtom: SettableDerivedAtom<Value, Update, Result>
-): CallbackSetAtom<Update, Result, Value>;
+  writableAtom: [Update] extends [never] ? never : DerivedAtom<Value, Update, Result>
+): CallbackSetAtom<Update, Result, Value> | undefined;
 export function useSetAtomCallback<Update, Result>(
   writableAtom: MutableAtom<Result, Update>
 ): CallbackSetAtom<Update, Result, Result>;
@@ -77,7 +91,7 @@ export function useSetAtomCallback<Update, Result>(
 export function useSetAtomCallback<Update, Result, Value>(
   writableAtom:
     | MutableAtom<Result, Update>
-    | SettableDerivedAtom<Value, Update, Result>
+    | DerivedAtom<Value, Update, Result>
     | CallbackAtom<Update, Result>
 ): CallbackSetAtom<Update, Result, Value | undefined> {
   if (!isSettableAtom(writableAtom)) {
@@ -93,7 +107,10 @@ export function useSetAtomCallback<Update, Result, Value>(
         : undefined;
       const updateValue = updateCallback(updateCallbackValue);
 
-      return store.setAtom<Update, Result, Value>(writableAtom, updateValue);
+      return store.setAtom(
+        writableAtom as SettableAtom<Update, Result, SettableAtomType>,
+        updateValue
+      );
     },
     [store, writableAtom]
   );
