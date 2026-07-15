@@ -1,4 +1,4 @@
-import { isMutableAtom } from '../atom/utils';
+import { isMutableAtom } from '../atom/guards';
 import { EmptyAtomValueSymbol } from '../symbols';
 import {
   AtomState,

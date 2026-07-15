@@ -1,18 +1,34 @@
-
-[2m$ tsc --noEmit[22m
-[96msrc/store/modules/engine/read-write.ts[0m:[93m159[0m:[93m7[0m - [91merror[0m[90m TS2322: [0mType 'Update | NonNullable<UpdateResult>' is not assignable to type 'UpdateResult'.
-  'UpdateResult' could be instantiated with an arbitrary type which could be unrelated to 'Update | NonNullable<UpdateResult>'.
-
-[7m159[0m       return atom.callback?.(callbackArgs, update) ?? update;
-[7m   [0m [91m      ~~~~~~[0m
-
-  [96msrc/store/modules/engine/read-write.ts[0m:[93m129[0m:[93m5[0m
-    [7m129[0m     Update,
-    [7m   [0m [96m    ~~~~~~[0m
-    This type parameter might need an `extends UpdateResult` constraint.
-
-
-Found 1 error in src/store/modules/engine/read-write.ts[90m:159[0m
-
-[41m[31m[[39m[49m[41m[30mELIFECYCLE[39m[49m[41m[31m][39m[49m [31mCommand failed with exit code 2.[39m
-[K[0J
+$ tsc --noEmit
+src/__type-diag.ts(24,7): error TS2322: Type 'ObserverAtom' is not assignable to type 'GettableAtom<unknown>'.
+  Types of property 'read' are incompatible.
+    Type 'AtomRead<void>' is not assignable to type 'AtomRead<unknown>'.
+      Types of parameters 'lastValue' and 'lastValue' are incompatible.
+        Type 'unknown' is not assignable to type 'void | unique symbol'.
+src/__type-diag.ts(36,19): error TS2345: Argument of type 'string | unique symbol' is not assignable to parameter of type 'string'.
+  Type 'typeof import("/Users/grzesiek/workspace/private/stan/packages/core/src/symbols").EmptyAtomValueSymbol' is not assignable to type 'string'.
+src/__type-diag.ts(53,7): error TS2345: Argument of type '{ peek: StorePeekAtom; setSelf: (value: Value) => Value; }' is not assignable to parameter of type '[Value] extends [never] ? { peek: StoreGetAtom; } : { peek: StoreGetAtom; setSelf: (update: Value) => Value; }'.
+src/__type-diag.ts(64,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(args: [Value] extends [never] ? { peek: StoreGetAtom; } : { peek: StoreGetAtom; setSelf: (update: Value) => Value; }, currentValue: Value): void | ... 1 more ... | undefined', gave the following error.
+    Argument of type '{ peek: StorePeekAtom; }' is not assignable to parameter of type '[Value] extends [never] ? { peek: StoreGetAtom; } : { peek: StoreGetAtom; setSelf: (update: Value) => Value; }'.
+  Overload 2 of 2, '(args: { peek: StoreGetAtom; }, currentValue: void): void | AtomOnUnobserve<void> | undefined', gave the following error.
+    Argument of type 'Value' is not assignable to parameter of type 'void'.
+src/atom/utils.ts(15,7): error TS2345: Argument of type '{ peek: StorePeekAtom; setSelf: (value: Value) => Value; }' is not assignable to parameter of type '[Value] extends [never] ? { peek: StoreGetAtom; } : { peek: StoreGetAtom; setSelf: (update: Value) => Value; }'.
+src/atom/utils.ts(28,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(args: [Value] extends [never] ? { peek: StoreGetAtom; } : { peek: StoreGetAtom; setSelf: (update: Value) => Value; }, currentValue: Value): void | AtomOnUnobserve<...>', gave the following error.
+    Argument of type '{ peek: StorePeekAtom; }' is not assignable to parameter of type '[Value] extends [never] ? { peek: StoreGetAtom; } : { peek: StoreGetAtom; setSelf: (update: Value) => Value; }'.
+  Overload 2 of 2, '(args: { peek: StoreGetAtom; }, currentValue: void): void | AtomOnUnobserve<void>', gave the following error.
+    Argument of type 'Value' is not assignable to parameter of type 'void'.
+src/store/modules/engine/observation.ts(28,51): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'DependentAtom<unknown>' is not assignable to parameter of type 'GettableAtom<unknown, never>'.
+      Type 'ObserverAtom' is not assignable to type 'GettableAtom<unknown, never>'.
+        Types of property 'read' are incompatible.
+          Type 'AtomRead<void>' is not assignable to type 'AtomRead<unknown>'.
+            Types of parameters 'lastValue' and 'lastValue' are incompatible.
+              Type 'unknown' is not assignable to type 'void | unique symbol'.
+src/store/modules/engine/observation.ts(62,50): error TS2345: Argument of type 'GettableAtom<Value>' is not assignable to parameter of type 'GettableAtom<unique symbol | Value>'.
+  Types of property 'read' are incompatible.
+    Type 'AtomRead<Value>' is not assignable to type 'AtomRead<unique symbol | Value>'.
+      Type 'unique symbol | Value' is not assignable to type 'Value'.
+        'Value' could be instantiated with an arbitrary type which could be unrelated to 'unique symbol | Value'.
+[ELIFECYCLE] Command failed with exit code 2.

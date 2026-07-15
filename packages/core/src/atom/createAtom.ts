@@ -1,3 +1,4 @@
+import { EmptyAtomValueSymbolType } from '../symbols';
 import {
   MutableAtom,
   DerivedAtom,
@@ -60,19 +61,28 @@ export function createDerivedAtom<Value>(
 ): DerivedAtom<Value>;
 export function createDerivedAtom<Value, UpdateValue>(
   read: AtomRead<Value>,
-  callback: AtomCallback<Value, UpdateValue, UpdateValue>,
+  callback: AtomCallback<UpdateValue, UpdateValue, Value | EmptyAtomValueSymbolType>,
   options?: CreateGettableAtomOptions<Value, never>
 ): DerivedAtom<Value, UpdateValue, UpdateValue>;
 export function createDerivedAtom<Value, UpdateValue, UpdateResult>(
   read: AtomRead<Value>,
-  callback: AtomCallback<Value, UpdateValue, UpdateResult>,
+  callback: AtomCallback<UpdateValue, UpdateResult, Value | EmptyAtomValueSymbolType>,
   options?: CreateGettableAtomOptions<Value, never>
 ): DerivedAtom<Value, UpdateValue, UpdateResult>;
 export function createDerivedAtom<Value, UpdateValue, UpdateResult = UpdateValue>(
   read: AtomRead<Value>,
-  callback?: AtomCallback<Value, UpdateValue, UpdateResult>,
+  callback?: AtomCallback<UpdateValue, UpdateResult, Value | EmptyAtomValueSymbolType>,
   options?: CreateGettableAtomOptions<Value, never>
 ): DerivedAtom<Value, UpdateValue, UpdateResult> {
+  if (callback === undefined) {
+    return {
+      type: 'derived',
+      read,
+      onObserve: options?.onObserve,
+      storeLabel: options?.storeLabel,
+    } as DerivedAtom<Value, UpdateValue, UpdateResult>;
+  }
+
   return {
     type: 'derived',
     read,

@@ -1,5 +1,4 @@
 import { resolveAtomOnObserve } from '../../../atom/utils';
-import { NoOnObserveInitialValueSymbol, NoOnObserveInitialValueSymbolType } from '../../../symbols';
 import { DependentAtom, DependencyAtom, GettableAtom, OnObserveStoreApi } from '../../../types';
 import { createMicrotaskQueue, MicrotaskQueue } from '../../microtaskQueue';
 import {
@@ -12,9 +11,7 @@ import { EngineBuildContext } from './context';
 
 type ObservationBuildResult = {
   unobserveAtomQueue: MicrotaskQueue<GettableAtom>;
-  markAtomAsObserved: <Value>(
-    atom: GettableAtom<Value>
-  ) => Value | NoOnObserveInitialValueSymbolType;
+  markAtomAsObserved: <Value>(atom: GettableAtom<Value>) => void;
   unlinkAtomPreviousDependencies: (
     atom: DependentAtom<any>,
     previousDependencies?: Set<DependencyAtom<any>>,
@@ -46,13 +43,11 @@ export const buildObservation = (ctx: EngineBuildContext): ObservationBuildResul
     atomsToUnobserve.forEach(possiblyUnobserveAtom);
   });
 
-  const markAtomAsObserved = <Value>(
-    atom: GettableAtom<Value>
-  ): Value | NoOnObserveInitialValueSymbolType => {
+  const markAtomAsObserved = <Value>(atom: GettableAtom<Value>): void => {
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
     // Atom already observed.
     if (atomState.isObserved) {
-      return NoOnObserveInitialValueSymbol;
+      return;
     }
     // Mark dependencies as observed before marking given atom as observed.
     // TODO Should we actually revert it and set isObserved = true before iterating dependencies?
@@ -66,21 +61,9 @@ export const buildObservation = (ctx: EngineBuildContext): ObservationBuildResul
 
     const onObserveResult = resolveAtomOnObserve(atom, atomState.value, onObserveStoreApi);
 
-    if (!onObserveResult) {
-      return NoOnObserveInitialValueSymbol;
-    }
-
-    if (onObserveResult === NoOnObserveInitialValueSymbol) {
-      return NoOnObserveInitialValueSymbol;
-    }
-
     if (typeof onObserveResult === 'function') {
       atomState.onUnobserve = onObserveResult;
-
-      return NoOnObserveInitialValueSymbol;
     }
-
-    return NoOnObserveInitialValueSymbol;
   };
 
   const unlinkAtomPreviousDependencies = (

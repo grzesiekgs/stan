@@ -4,8 +4,7 @@ import {
   isCallbackAtom,
   isDerivedAtom,
   isSettableAtom,
-} from '../../../atom/utils';
-import { NoOnObserveInitialValueSymbol } from '../../../symbols';
+} from '../../../atom/guards';
 import {
   AtomStateStatus,
   GettableAtom,
@@ -60,13 +59,7 @@ export const buildReadWrite = (ctx: EngineBuildContext): ReadWriteBuildResult =>
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
 
     if (readCycle.observed) {
-      const onOnbserveInitialValue = ctx.markAtomAsObserved(atom);
-
-      if (onOnbserveInitialValue !== NoOnObserveInitialValueSymbol) {
-        updateAtomValue(atom, onOnbserveInitialValue);
-
-        return onOnbserveInitialValue;
-      }
+      ctx.markAtomAsObserved(atom);
     }
 
     // When state is marked as fresh, theres was no update since last read, therefore return value.
@@ -165,7 +158,7 @@ export const buildReadWrite = (ctx: EngineBuildContext): ReadWriteBuildResult =>
       return atom.callback(callbackArgs, update);
     }
 
-    if (isDerivedAtom(atom) && 'callback' in atom) {
+    if (isSettableAtom(atom) && isDerivedAtom(atom)) {
       const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
 
       return atom.callback(callbackArgs, update, atomState.value);

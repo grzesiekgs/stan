@@ -1,4 +1,3 @@
-import { NoOnObserveInitialValueSymbolType } from '../../../symbols';
 import {
   AtomStateStatus,
   DependentAtom,
@@ -21,9 +20,7 @@ export type EngineBuildContext = {
     atom: DependentAtom<any>,
     status: AtomStateStatus
   ) => void;
-  markAtomAsObserved: <Value>(
-    atom: GettableAtom<Value>
-  ) => Value | NoOnObserveInitialValueSymbolType;
+  markAtomAsObserved: <Value>(atom: GettableAtom<Value>) => void;
   unlinkAtomPreviousDependencies: (
     atom: DependentAtom<any>,
     previousDependencies?: Set<DependencyAtom<any>>,
