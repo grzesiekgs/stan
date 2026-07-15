@@ -1,5 +1,15 @@
 import { resolveAtomOnObserve } from '../../../atom/utils';
-import { DependentAtom, DependencyAtom, GettableAtom, OnObserveStoreApi } from '../../../types';
+import { isObserverAtom } from '../../../atom/guards';
+import {
+  AtomOnUnobserve,
+  AtomReadCycle,
+  AtomState,
+  DependentAtom,
+  DependencyAtom,
+  GettableAtom,
+  OnObserveStoreApi,
+} from '../../../types';
+import { isValuePresent } from '../../../utils/isValuePresent';
 import { createMicrotaskQueue, MicrotaskQueue } from '../../microtaskQueue';
 import {
   createAtomReadCycle,
@@ -11,7 +21,11 @@ import { EngineBuildContext } from './context';
 
 type ObservationBuildResult = {
   unobserveAtomQueue: MicrotaskQueue<GettableAtom>;
-  markAtomAsObserved: <Value>(atom: GettableAtom<Value>) => void;
+  markAtomAsObserved: <Value>(
+    atom: GettableAtom<Value>,
+    atomState: AtomState<Value>,
+    readCycle: AtomReadCycle
+  ) => void;
   unlinkAtomPreviousDependencies: (
     atom: DependentAtom<any>,
     previousDependencies?: Set<DependencyAtom<any>>,
@@ -34,6 +48,7 @@ export const buildObservation = (ctx: EngineBuildContext): ObservationBuildResul
 
     atomState.onUnobserve?.(atomState.value);
     atomState.isObserved = false;
+    atomState.onUnobserve = undefined;
     atomState.dependencies?.forEach(possiblyUnobserveAtom);
   };
 
@@ -43,15 +58,46 @@ export const buildObservation = (ctx: EngineBuildContext): ObservationBuildResul
     atomsToUnobserve.forEach(possiblyUnobserveAtom);
   });
 
-  const markAtomAsObserved = <Value>(atom: GettableAtom<Value>): void => {
-    const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
+  const runAtomOnObserve = (
+    atom: GettableAtom<any>,
+    atomState: AtomState<any>,
+    onObserveStoreApi: OnObserveStoreApi
+  ): void => {
+    let onObserveResult: void | AtomOnUnobserve<any>;
+
+    if (isObserverAtom(atom)) {
+      onObserveResult = atom.onObserve?.({ peek: onObserveStoreApi.peekAtom }, undefined);
+    } else {
+      const atomValue = atomState.value;
+
+      if (!isValuePresent(atomValue)) {
+        throw new Error(`Atom ${atom.storeLabel} has no initialized value on observe`);
+      }
+
+      onObserveResult = resolveAtomOnObserve(atom, atomValue, onObserveStoreApi);
+    }
+
+    atomState.onUnobserve = typeof onObserveResult === 'function' ? onObserveResult : undefined;
+  };
+
+  const markAtomAsObserved = <Value>(
+    atom: GettableAtom<Value>,
+    atomState: AtomState<Value>,
+    readCycle: AtomReadCycle
+  ): void => {
     // Atom already observed.
     if (atomState.isObserved) {
       return;
     }
-    // Mark dependencies as observed before marking given atom as observed.
-    // TODO Should we actually revert it and set isObserved = true before iterating dependencies?
-    atomState.dependencies?.forEach(markAtomAsObserved);
+
+    atomState.dependencies?.forEach((dependencyAtom) => {
+      const dependencyAtomState = getAtomStateFromStateMap(dependencyAtom, atomToStateMap);
+
+      if (!dependencyAtomState.isObserved) {
+        ctx.readAtomValue(dependencyAtom, createAtomReadCycle(true, readCycle.chain));
+      }
+    });
+
     atomState.isObserved = true;
 
     const onObserveStoreApi: OnObserveStoreApi = {
@@ -59,11 +105,7 @@ export const buildObservation = (ctx: EngineBuildContext): ObservationBuildResul
       setAtom: ctx.writeAtomValue,
     };
 
-    const onObserveResult = resolveAtomOnObserve(atom, atomState.value, onObserveStoreApi);
-
-    if (typeof onObserveResult === 'function') {
-      atomState.onUnobserve = onObserveResult;
-    }
+    runAtomOnObserve(atom, atomState, onObserveStoreApi);
   };
 
   const unlinkAtomPreviousDependencies = (

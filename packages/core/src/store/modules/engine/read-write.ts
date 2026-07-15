@@ -58,12 +58,12 @@ export const buildReadWrite = (ctx: EngineBuildContext): ReadWriteBuildResult =>
 
     const atomState = getAtomStateFromStateMap(atom, atomToStateMap);
 
-    if (readCycle.observed) {
-      ctx.markAtomAsObserved(atom);
-    }
-
     // When state is marked as fresh, theres was no update since last read, therefore return value.
     if (atomState.status === AtomStateStatus.FRESH) {
+      if (readCycle.observed) {
+        ctx.markAtomAsObserved(atom, atomState, readCycle);
+      }
+
       return atomState.value;
     }
 
@@ -87,6 +87,10 @@ export const buildReadWrite = (ctx: EngineBuildContext): ReadWriteBuildResult =>
       // it means that atom didn't have to recalculate as result of updating dependency.
       if (atomState.status === AtomStateStatus.UNDETERMINED) {
         atomState.status = AtomStateStatus.FRESH;
+
+        if (readCycle.observed) {
+          ctx.markAtomAsObserved(atom, atomState, readCycle);
+        }
 
         return atomState.value;
       }
@@ -120,6 +124,10 @@ export const buildReadWrite = (ctx: EngineBuildContext): ReadWriteBuildResult =>
 
     ctx.unlinkAtomPreviousDependencies(atom, previousDependencies, atomState.dependencies);
     updateAtomValue(atom, value);
+
+    if (readCycle.observed) {
+      ctx.markAtomAsObserved(atom, atomState, readCycle);
+    }
 
     return value;
   };

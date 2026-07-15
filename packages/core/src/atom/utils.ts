@@ -1,4 +1,4 @@
-import { GettableAtom, AtomOnUnobserve, OnObserveStoreApi } from '../types';
+import { AtomOnUnobserve, GettableAtom, OnObserveStoreApi } from '../types';
 import { isDerivedAtom, isMutableAtom, isObserverAtom } from './guards';
 
 export function resolveAtomOnObserve<Value>(
@@ -14,7 +14,7 @@ export function resolveAtomOnObserve<Value>(
     return atom.onObserve(
       {
         peek: storeApi.peekAtom,
-        setSelf: (value) => storeApi.setAtom(atom, value),
+        setSelf: (update) => storeApi.setAtom(atom, update),
       },
       atomValue
     );
@@ -25,7 +25,8 @@ export function resolveAtomOnObserve<Value>(
   }
 
   if (isObserverAtom(atom)) {
-    return atom.onObserve({ peek: storeApi.peekAtom }, atomValue);
+    // observerAtom has void as value, which is too strict out there.
+    return atom.onObserve({ peek: storeApi.peekAtom }) as void | AtomOnUnobserve<Value>;
   }
 
   throw new Error('Atom is not gettable');

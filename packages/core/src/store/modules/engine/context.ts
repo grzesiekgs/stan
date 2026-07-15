@@ -1,4 +1,6 @@
 import {
+  AtomReadCycle,
+  AtomState,
   AtomStateStatus,
   DependentAtom,
   DependencyAtom,
@@ -20,7 +22,11 @@ export type EngineBuildContext = {
     atom: DependentAtom<any>,
     status: AtomStateStatus
   ) => void;
-  markAtomAsObserved: <Value>(atom: GettableAtom<Value>) => void;
+  markAtomAsObserved: <Value>(
+    atom: GettableAtom<Value>,
+    atomState: AtomState<Value>,
+    readCycle: AtomReadCycle
+  ) => void;
   unlinkAtomPreviousDependencies: (
     atom: DependentAtom<any>,
     previousDependencies?: Set<DependencyAtom<any>>,

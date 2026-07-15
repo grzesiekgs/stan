@@ -27,12 +27,20 @@ export type AtomCallback<UpdateValue, UpdateResult = UpdateValue, DerivedValue =
 export type AtomOnUnobserveOptions = { reset?: boolean };
 export type AtomOnUnobserve<Value> = (currentValue: Value) => void | AtomOnUnobserveOptions;
 export type AtomOnUnobserveResult<Value> = void | AtomOnUnobserveOptions | AtomOnUnobserve<Value>;
-export type AtomOnObserve<Value, Update> = (
-  args: [Update] extends [never]
-    ? { peek: StoreGetAtom }
-    : { peek: StoreGetAtom; setSelf: (update: Update) => Value },
+export type AtomOnObserveReadonly<Value> = (
+  args: { peek: StoreGetAtom },
   currentValue: Value
 ) => void | AtomOnUnobserve<Value>;
+
+export type AtomOnObserveWritable<Value, Update> = (
+  args: { peek: StoreGetAtom; setSelf: (update: Update) => Value },
+  currentValue: Value
+) => void | AtomOnUnobserve<Value>;
+
+/** Kept for CreateGettableAtomOptions / loose GettableAtom typing */
+export type AtomOnObserve<Value, Update> = [Update] extends [never]
+  ? AtomOnObserveReadonly<Value>
+  : AtomOnObserveWritable<Value, Update>;
 export type AtomOnReset<Value> = (currentValue: Value) => void;
 
 export type GettableAtomType = 'mutable' | 'derived' | 'observer';
@@ -79,9 +87,13 @@ export type GettableAtom<
 };
 
 export type MutableAtomGetInitialValue<Value> = () => Value;
-export type MutableAtom<Value, Update = Value> = GettableAtom<Value, Update, 'mutable'> &
+export type MutableAtom<Value, Update = Value> = Omit<
+  GettableAtom<Value, Update, 'mutable'>,
+  'onObserve'
+> &
   SettableAtom<Update, Value, 'mutable'> & {
     getInitialValue: MutableAtomGetInitialValue<Value>;
+    onObserve?: AtomOnObserveWritable<Value, Update>;
   };
 
 export type DerivedAtom<Value, UpdateValue = never, UpdateResult = UpdateValue> = GettableAtom<
@@ -174,8 +186,8 @@ export type BaseAtomState<Value> = {
   onUnobserve: AtomOnUnobserve<Value> | undefined;
   // TODO Is there a scenario where this Set would incorrectly prevent garbage collection?
   // If such case will be determined, then consider wrapping each DerivedAtom in WeakRef, which can be deref'ed.
-  dependencies: Set<DependencyAtom<unknown>> | undefined;
-  dependents: Set<DependentAtom<unknown>> | undefined;
+  dependencies: Set<DependencyAtom<any>> | undefined;
+  dependents: Set<DependentAtom<any>> | undefined;
   status: AtomStateStatus;
 };
 
@@ -240,7 +252,9 @@ export type AtomValueSetter<UpdateValue, UpdateResult = void> = (
 export type CreateGettableAtomOptions<Value, Update> = {
   storeLabel?: string;
   // TODO Add onMount? Look ReadableAtom/WritableAtom for more details.
-  onObserve?: [Update] extends [never] ? AtomOnObserve<Value, never> : AtomOnObserve<Value, Update>;
+  onObserve?: [Update] extends [never]
+    ? AtomOnObserveReadonly<Value>
+    : AtomOnObserveWritable<Value, Update>;
 };
 
 export type UnwrapPromise<Type> = Type extends Promise<infer PromiseType> ? PromiseType : Type; 
